@@ -1,0 +1,187 @@
+import {
+  forceCollide,
+  forceManyBody,
+  forceSimulation,
+  forceX,
+  forceY,
+  type Simulation,
+  type SimulationNodeDatum,
+} from 'd3-force';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+export interface LayoutSpec {
+  id: string;
+  kind: 'customer' | 'task';
+  /** Collision radius, including the label strip below the lamp. */
+  r: number;
+  /** Task slot index around the focused customer. */
+  slot?: number;
+  slots?: number;
+}
+
+interface SimNode extends SimulationNodeDatum, LayoutSpec {
+  x: number;
+  y: number;
+}
+
+export type Positions = Map<string, { x: number; y: number }>;
+
+/** Cord leaves the focused lamp this far below centre and needs this half-height of clear space. */
+export const CORD_DROP = 24;
+const CORD_HALF = 50;
+
+interface Options {
+  width: number;
+  height: number;
+  focusId: string | null;
+  ringR: number;
+}
+
+const reduceMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ringR }: Options) {
+  const simRef = useRef<Simulation<SimNode, undefined> | null>(null);
+  const nodesRef = useRef(new Map<string, SimNode>());
+  const [positions, setPositions] = useState<Positions>(new Map());
+
+  const key = useMemo(
+    () => specs.map((s) => `${s.id}:${s.kind}:${Math.round(s.r)}:${s.slot ?? ''}/${s.slots ?? ''}`).join('|'),
+    [specs],
+  );
+
+  useEffect(() => {
+    if (width < 10 || height < 10) return;
+    const cx = width / 2;
+    const cy = height / 2;
+    const known = nodesRef.current;
+    const focusNode = focusId ? known.get(focusId) : undefined;
+
+    const next = new Map<string, SimNode>();
+    for (const spec of specs) {
+      const prev = known.get(spec.id);
+      if (prev) {
+        Object.assign(prev, spec);
+        next.set(spec.id, prev);
+      } else {
+        const fromFocus = spec.kind === 'task' && focusNode;
+        next.set(spec.id, {
+          ...spec,
+          x: fromFocus ? focusNode.x : cx + (Math.random() - 0.5) * 160,
+          y: fromFocus ? focusNode.y : cy + (Math.random() - 0.5) * 160,
+        });
+      }
+    }
+    nodesRef.current = next;
+    const nodes = [...next.values()];
+
+    const slotPos = (n: SimNode) => {
+      const angle = (((n.slot ?? 0) + 0.5) / Math.max(1, n.slots ?? 1)) * Math.PI * 2;
+      return { x: cx + Math.cos(angle) * ringR, y: cy + Math.sin(angle) * ringR };
+    };
+
+    const target = (n: SimNode, axis: 'x' | 'y') => {
+      if (n.kind === 'task') return slotPos(n)[axis];
+      return axis === 'x' ? cx : cy;
+    };
+
+    const strength = (n: SimNode) => {
+      if (n.kind === 'task') return 0.16;
+      if (focusId) return n.id === focusId ? 0.3 : 0.012;
+      return 0.022;
+    };
+
+    const push = () => {
+      if (!focusId) return;
+      for (const n of nodes) {
+        if (n.kind !== 'customer' || n.id === focusId) continue;
+        const dx = n.x - cx;
+        const dy = n.y - cy;
+        const d = Math.hypot(dx, dy) || 1;
+        const min = ringR + n.r + 64;
+        if (d < min) {
+          n.vx = (n.vx ?? 0) + (dx / d) * (min - d) * 0.09;
+          n.vy = (n.vy ?? 0) + (dy / d) * (min - d) * 0.09;
+        }
+        // Keep the cord's path to the sheet free of other lamps.
+        if (dx > 0) {
+          const dyBand = n.y - (cy + CORD_DROP);
+          const half = CORD_HALF + n.r * 0.6;
+          if (Math.abs(dyBand) < half) {
+            n.vy = (n.vy ?? 0) + Math.sign(dyBand || 1) * (half - Math.abs(dyBand)) * 0.12;
+          }
+        }
+      }
+    };
+
+    const bounds = () => {
+      for (const n of nodes) {
+        const padX = Math.min(Math.max(n.r + 6, 76), width / 2 - 1);
+        const padTop = Math.min(n.r - 14, height / 2 - 1);
+        const padBottom = Math.min(n.r + 6, height / 2 - 1);
+        n.x = Math.max(padX, Math.min(width - padX, n.x));
+        n.y = Math.max(padTop, Math.min(height - padBottom, n.y));
+      }
+    };
+
+    const snapshot = () => {
+      const map: Positions = new Map();
+      for (const n of nodes) map.set(n.id, { x: n.x, y: n.y });
+      setPositions(map);
+    };
+
+    simRef.current?.stop();
+    const sim = forceSimulation<SimNode>(nodes)
+      .velocityDecay(0.34)
+      .alphaDecay(0.028)
+      .force('x', forceX<SimNode>((n) => target(n, 'x')).strength(strength))
+      .force('y', forceY<SimNode>((n) => target(n, 'y')).strength((n) => strength(n) * 1.25))
+      .force('charge', forceManyBody<SimNode>().strength((n) => (n.kind === 'customer' ? -110 : -6)).distanceMax(420))
+      .force('collide', forceCollide<SimNode>((n) => n.r + 10).strength(0.9).iterations(2))
+      .force('push', push)
+      .force('bounds', bounds);
+    simRef.current = sim;
+    sim.on('tick', snapshot);
+    snapshot();
+
+    if (reduceMotion()) {
+      sim.stop();
+      sim.alpha(1);
+      for (let i = 0; i < 320; i += 1) sim.tick();
+      snapshot();
+    } else {
+      sim.alpha(0.9).restart();
+    }
+    return () => {
+      sim.stop();
+    };
+    // `key` stands in for specs so identical specs do not restart the layout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, width, height, focusId, ringR]);
+
+  const dragStart = useCallback((id: string) => {
+    const n = nodesRef.current.get(id);
+    if (!n) return;
+    n.fx = n.x;
+    n.fy = n.y;
+    simRef.current?.alphaTarget(0.25).restart();
+  }, []);
+
+  const dragMove = useCallback((id: string, x: number, y: number) => {
+    const n = nodesRef.current.get(id);
+    if (!n) return;
+    n.fx = x;
+    n.fy = y;
+  }, []);
+
+  const dragEnd = useCallback((id: string) => {
+    const n = nodesRef.current.get(id);
+    if (n) {
+      n.fx = null;
+      n.fy = null;
+    }
+    simRef.current?.alphaTarget(0);
+  }, []);
+
+  return { positions, dragStart, dragMove, dragEnd };
+}
