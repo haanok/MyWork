@@ -7,7 +7,7 @@ services:
   app:
     # Published by .github/workflows/container.yml. To build locally instead:
     #   docker compose -f compose.yaml -f compose.build.yaml up -d --build
-    image: ${MYWORK_IMAGE:-ghcr.io/haanok/mywork-selfhost:latest}
+    image: ${MYWORK_IMAGE:-ghcr.io/janfredrik/mywork-selfhost:latest}
     restart: unless-stopped
     environment:
       POCKET_ID_URL: ${POCKET_ID_URL:?set POCKET_ID_URL in .env}

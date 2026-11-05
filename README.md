@@ -29,8 +29,8 @@ on pushes to `main` or manual workflow runs. Publishing uses the built-in
 Two images are published, each tagged `latest` for `main` and
 `sha-<commit>` for each published build:
 
-- `ghcr.io/haanok/mywork` from `Dockerfile` (frontend only, nginx).
-- `ghcr.io/haanok/mywork-selfhost` from `Dockerfile.selfhost` (frontend
+- `ghcr.io/janfredrik/mywork` from `Dockerfile` (frontend only, nginx).
+- `ghcr.io/janfredrik/mywork-selfhost` from `Dockerfile.selfhost` (frontend
   and API, used by `compose.yaml`; see the self-hosted section below). New GHCR packages are private
 by default; retain private visibility in the package settings.
 
@@ -69,7 +69,7 @@ Internet → host nginx (TLS) → oauth2-proxy :4180 → app :7071
                                    └── OIDC with Pocket ID
 ```
 
-- **app** (`ghcr.io/haanok/mywork-selfhost`, built from
+- **app** (`ghcr.io/janfredrik/mywork-selfhost`, built from
   `Dockerfile.selfhost` with code in `server/`): one Node process that
   serves the built frontend and implements `GET/PUT /api/data`. It verifies
   the Pocket ID ID token that oauth2-proxy forwards in
@@ -125,7 +125,7 @@ docker compose logs -f
 
 To update after a new build on `main`: `docker compose pull && docker
 compose up -d`. To pin a specific build, set
-`MYWORK_IMAGE=ghcr.io/haanok/mywork-selfhost:sha-<commit>` in `.env`. To
+`MYWORK_IMAGE=ghcr.io/janfredrik/mywork-selfhost:sha-<commit>` in `.env`. To
 build from a checkout instead of pulling, run
 `docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 
