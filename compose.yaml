@@ -7,14 +7,18 @@ services:
   app:
     # Published by .github/workflows/container.yml. To build locally instead:
     #   docker compose -f compose.yaml -f compose.build.yaml up -d --build
-    image: ${MYWORK_IMAGE:-ghcr.io/janfredrik/mywork-selfhost:latest}
+    image: ${MYWORK_IMAGE:-ghcr.io/haanok/mywork-selfhost:latest}
     restart: unless-stopped
+    # node in the image is 1000:1000. For a bind mount owned by another user
+    # (on Unraid nobody:users), set APP_UID=99 and APP_GID=100.
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     environment:
       POCKET_ID_URL: ${POCKET_ID_URL:?set POCKET_ID_URL in .env}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID in .env}
       ALLOWED_GROUPS: ${ALLOWED_GROUPS:-}
     volumes:
-      - mywork-data:/data
+      # Named volume by default; set DATA_PATH to a host directory to bind-mount it.
+      - ${DATA_PATH:-mywork-data}:/data
     expose:
       - "7071"
 

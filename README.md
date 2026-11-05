@@ -29,8 +29,8 @@ on pushes to `main` or manual workflow runs. Publishing uses the built-in
 Two images are published, each tagged `latest` for `main` and
 `sha-<commit>` for each published build:
 
-- `ghcr.io/janfredrik/mywork` from `Dockerfile` (frontend only, nginx).
-- `ghcr.io/janfredrik/mywork-selfhost` from `Dockerfile.selfhost` (frontend
+- `ghcr.io/haanok/mywork` from `Dockerfile` (frontend only, nginx).
+- `ghcr.io/haanok/mywork-selfhost` from `Dockerfile.selfhost` (frontend
   and API, used by `compose.yaml`; see the self-hosted section below). New GHCR packages are private
 by default; retain private visibility in the package settings.
 
@@ -69,7 +69,7 @@ Internet → host nginx (TLS) → oauth2-proxy :4180 → app :7071
                                    └── OIDC with Pocket ID
 ```
 
-- **app** (`ghcr.io/janfredrik/mywork-selfhost`, built from
+- **app** (`ghcr.io/haanok/mywork-selfhost`, built from
   `Dockerfile.selfhost` with code in `server/`): one Node process that
   serves the built frontend and implements `GET/PUT /api/data`. It verifies
   the Pocket ID ID token that oauth2-proxy forwards in
@@ -123,9 +123,16 @@ docker compose up -d
 docker compose logs -f
 ```
 
+Data is stored in the named volume `mywork-data` by default. To keep it in
+a host directory instead, set `DATA_PATH` in `.env`. The directory must be
+writable by the user the app runs as, `APP_UID:APP_GID` (default
+`1000:1000`); otherwise saving fails with `EACCES` in `docker compose logs
+app`. On Unraid, use `APP_UID=99` and `APP_GID=100` (`nobody:users`) and
+`chown 99:100` the directory.
+
 To update after a new build on `main`: `docker compose pull && docker
 compose up -d`. To pin a specific build, set
-`MYWORK_IMAGE=ghcr.io/janfredrik/mywork-selfhost:sha-<commit>` in `.env`. To
+`MYWORK_IMAGE=ghcr.io/haanok/mywork-selfhost:sha-<commit>` in `.env`. To
 build from a checkout instead of pulling, run
 `docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 
@@ -186,8 +193,8 @@ self-hosted app uses the Pocket ID user's `sub` (a UUID) instead.
    docker compose logs app | grep 'No stored data for user'
    ```
 
-3. Copy the file into the volume. Running the copy as the container's
-   `node` user gives it the right owner:
+3. Copy the file into the volume. Running the copy inside the container
+   gives it the right owner:
 
    ```sh
    SUB=<pocket-id-sub>
@@ -195,6 +202,9 @@ self-hosted app uses the Pocket ID user's `sub` (a UUID) instead.
    ```
 
    (With `docker compose cp`, the file is owned by root; fix it with
-   `docker compose exec -u root app chown -R node:node /data/$SUB`.)
+   `docker compose exec -u root app chown -R 1000:1000 /data/$SUB`, using
+   your `APP_UID:APP_GID` if you changed them. With `DATA_PATH` you can
+   instead copy the file to `$DATA_PATH/$SUB/data.json` on the host and
+   `chown` it to `APP_UID:APP_GID`.)
 
 4. Reload the app in the browser.
