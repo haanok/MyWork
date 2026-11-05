@@ -79,7 +79,7 @@ Internet → host nginx (TLS) → oauth2-proxy :4180 → app :7071
   `/.auth/login/aad` and `/.auth/logout` redirect to oauth2-proxy, so the
   frontend is unchanged and still deploys to Azure Static Web Apps.
 - **oauth2-proxy** handles login and is the only service published on the
-  host, on `127.0.0.1:${PORT:-4180}`. The stack contains no nginx; the
+  host, on `${BIND_ADDRESS:-127.0.0.1}:${PORT:-4180}`. The stack contains no nginx; the
   host's existing nginx proxies to it.
 
 The original `Dockerfile`/`nginx.conf` image and the GHCR workflow are not
@@ -130,9 +130,12 @@ build from a checkout instead of pulling, run
 `docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 
 Then add a server block to the host's nginx, based on
-[docs/nginx-example.conf](docs/nginx-example.conf). It must proxy to
-`127.0.0.1:4180`, pass `Host` and `X-Forwarded-Proto/Host/For`, and allow
-large headers for the split session cookies:
+[docs/nginx-example.conf](docs/nginx-example.conf). The example uses the SWAG layout
+(`/config/nginx/proxy.conf` sets `Host` and `X-Forwarded-Proto/Host/For`).
+It must proxy to `BIND_ADDRESS:PORT` from `.env`; when nginx runs in its own
+container, set `BIND_ADDRESS` to the host's LAN IP, since `127.0.0.1` is not
+reachable from inside that container. It also needs large headers for the
+split session cookies:
 
 ```nginx
 large_client_header_buffers 4 32k;

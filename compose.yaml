@@ -25,7 +25,7 @@ services:
       app:
         condition: service_healthy
     ports:
-      - "127.0.0.1:${PORT:-4180}:4180"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-4180}:4180"
     environment:
       OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
       OAUTH2_PROXY_UPSTREAMS: http://app:7071
