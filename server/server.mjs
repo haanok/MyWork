@@ -397,6 +397,10 @@ async function route(req, res) {
       return handleResourceMetadata(req, res);
     }
   }
+  // MCP clients probe other well-known documents here (for example
+  // oauth-authorization-server). Answer 404 instead of the SPA so they fall
+  // back to the authorization server named in the resource metadata.
+  if (pathname.startsWith('/.well-known/')) return sendText(res, 404, 'Not found.');
   if (pathname === '/api' || pathname.startsWith('/api/')) return sendText(res, 404, 'Not found.');
   if (pathname === '/.auth/login/aad') return handleLogin(req, res);
   if (pathname === '/.auth/logout') {

@@ -218,7 +218,9 @@ contacts and tasks. It is off unless `MCP_CLIENT_ID` is set.
 
 Claude signs in through Pocket ID with its own OIDC client and sends the
 access token as `Authorization: Bearer …`. oauth2-proxy lets `/mcp` and
-`/.well-known/oauth-protected-resource` through without a session cookie,
+`/.well-known/*` through without a session cookie (the app answers `404`
+for every well-known path except `oauth-protected-resource`, so Claude does
+not mistake the login redirect for authorization server metadata),
 and the app verifies the token itself (issuer `POCKET_ID_URL`, audience
 `MCP_CLIENT_ID`). A `401` from `/mcp` points Claude at
 `/.well-known/oauth-protected-resource`, which names Pocket ID as the
@@ -231,7 +233,8 @@ and Claude's tokens are not accepted on `/api/data`.
    - **Callback URL:** `https://claude.ai/api/mcp/auth_callback`. For
      Claude Code, also add `http://localhost:*/callback` if Pocket ID
      accepts it, or use the claude.ai connector, which Claude Code can use.
-   - **PKCE:** enabled. Confidential client (not *Public client*).
+   - **PKCE:** enabled. Either client type works: a *public* client needs
+     only the client ID in Claude; a confidential one also needs its secret.
    - **Allowed user groups:** the same group as the web client.
 
 2. **Set it in `.env`** and restart:
@@ -245,7 +248,8 @@ and Claude's tokens are not accepted on `/api/data`.
 
 3. **Add the connector in Claude:** *Settings → Connectors → Add custom
    connector*. URL: `https://mywork.example.com/mcp`. Under *Advanced
-   settings*, enter the client ID and client secret of `MyWork Claude`.
+   settings*, enter the client ID of `MyWork Claude` (and choose *public
+   client*, or enter the secret for a confidential client).
    Click *Connect* and sign in with Pocket ID.
 
 Tools: `list_customers`, `get_customer`, `list_tasks`, `search` (read), and

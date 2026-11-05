@@ -350,6 +350,14 @@ test('protected resource metadata points Claude at Pocket ID', async () => {
   }
 });
 
+test('other well-known paths give 404, not the SPA', async () => {
+  for (const p of ['/.well-known/oauth-authorization-server', '/.well-known/openid-configuration', '/.well-known/x']) {
+    const res = await request('GET', p);
+    assert.equal(res.status, 404, p);
+    assert.doesNotMatch(res.body, /<title>/);
+  }
+});
+
 test('/mcp requires a token for the MCP client', async () => {
   const anon = await request('POST', '/mcp', { body: '{}' });
   assert.equal(anon.status, 401);
@@ -476,8 +484,7 @@ test('MCP is off without MCP_CLIENT_ID', async () => {
   appPort = port;
   try {
     assert.equal((await request('POST', '/mcp', { token: await mcpToken(), body: '{}' })).status, 405);
-    assert.equal((await request('GET', '/.well-known/oauth-protected-resource')).status, 200, 'SPA fallback');
-    assert.match((await request('GET', '/.well-known/oauth-protected-resource')).body, /<title>index/);
+    assert.equal((await request('GET', '/.well-known/oauth-protected-resource')).status, 404);
   } finally {
     appPort = saved;
     plain.child.kill();
