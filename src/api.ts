@@ -98,3 +98,16 @@ export async function saveData(data: AppData): Promise<void> {
   });
   currentEtag = response.headers.get('etag');
 }
+export type McpInfo = { enabled: false } | { enabled: true; url: string; clientId: string; issuer: string };
+
+/** Asks the self-hosted server whether the remote MCP endpoint is on. Resolves to null when it cannot tell. */
+export async function fetchMcpInfo(): Promise<McpInfo | null> {
+  try {
+    const response = await fetch('/api/mcp', { credentials: 'same-origin' });
+    if (!response.ok || response.redirected) return null;
+    if (!(response.headers.get('content-type') ?? '').includes('application/json')) return null;
+    return await response.json() as McpInfo;
+  } catch {
+    return null;
+  }
+}

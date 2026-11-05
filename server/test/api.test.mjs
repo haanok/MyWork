@@ -381,6 +381,16 @@ test('/mcp accepts a token whose audience is the resource URL', async () => {
   assert.equal((await request('GET', '/api/data', { token })).status, 401);
 });
 
+test('/api/mcp tells the web app how to connect', async () => {
+  assert.equal((await request('GET', '/api/mcp')).status, 401);
+  assert.equal((await request('GET', '/api/mcp', { token: await mcpToken() })).status, 401);
+  const res = await request('GET', '/api/mcp', { token: await sign() });
+  assert.equal(res.status, 200);
+  assert.deepEqual(JSON.parse(res.body), {
+    enabled: true, url: `${PUBLIC}/mcp`, clientId: MCP_CLIENT, issuer: ISSUER,
+  });
+});
+
 test('MCP initialize and tools/list', async () => {
   const init = await rpc('initialize', {
     protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' },
@@ -493,6 +503,8 @@ test('MCP is off without MCP_CLIENT_ID', async () => {
   try {
     assert.equal((await request('POST', '/mcp', { token: await mcpToken(), body: '{}' })).status, 405);
     assert.equal((await request('GET', '/.well-known/oauth-protected-resource')).status, 404);
+    const info = await request('GET', '/api/mcp', { token: await sign() });
+    assert.deepEqual(JSON.parse(info.body), { enabled: false });
   } finally {
     appPort = saved;
     plain.child.kill();

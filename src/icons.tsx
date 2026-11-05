@@ -75,3 +75,16 @@ export const IconSearch = (p: SVGProps<SVGSVGElement>) => (
     <path d="M15 15l5 5" />
   </svg>
 );
+
+export const IconPlug = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M9 3v4M15 3v4M6.5 7h11v3.5a5.5 5.5 0 0 1-11 0V7ZM12 16v5" />
+  </svg>
+);
+
+export const IconCopy = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="8.5" y="8.5" width="11" height="11" rx="1.5" />
+    <path d="M15.5 8.5V5.5A1 1 0 0 0 14.5 4.5h-9a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3" />
+  </svg>
+);

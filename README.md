@@ -260,6 +260,12 @@ and Claude's tokens are not accepted on `/api/data`.
    client*, or enter the secret for a confidential client).
    Click *Connect* and sign in with Pocket ID.
 
+   The plug button in the app's header shows these values with copy
+   buttons, plus setup for Claude Code, VS Code and other MCP clients
+   (any client with Streamable HTTP, OAuth and a pre-registered client ID;
+   add that client's redirect URL to the Pocket ID client). It appears when
+   `GET /api/mcp` reports MCP as enabled.
+
 Tools: `list_customers`, `get_customer`, `list_tasks`, `search` (read), and
 `add_customer`, `update_customer`, `append_note`, `add_contact`,
 `add_task`, `update_task`, `delete_task` (write). Customers can be named

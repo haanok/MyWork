@@ -262,6 +262,19 @@ function sendJson(res, status, value, headers = {}) {
   });
 }
 
+// Tells the signed-in web app whether /mcp is on and what an MCP client needs
+// to connect (URL and the Pocket ID client ID, which is not a secret).
+async function handleMcpInfo(req, res) {
+  if (req.method !== 'GET') {
+    send(res, 405, '', { Allow: 'GET' });
+    return;
+  }
+  await authenticate(req);
+  sendJson(res, 200, MCP_ENABLED
+    ? { enabled: true, url: MCP_RESOURCE, clientId: MCP_CLIENT_ID, issuer: ISSUER }
+    : { enabled: false }, { 'Cache-Control': 'no-store' });
+}
+
 // RFC 9728 protected resource metadata: tells MCP clients (Claude) which
 // authorization server issues tokens for /mcp.
 function handleResourceMetadata(req, res) {
@@ -393,6 +406,7 @@ async function route(req, res) {
 
   if (pathname === '/healthz') return sendText(res, 200, 'ok');
   if (pathname === '/api/data') return handleData(req, res);
+  if (pathname === '/api/mcp') return handleMcpInfo(req, res);
   if (MCP_ENABLED) {
     if (pathname === '/mcp') return handleMcpRoute(req, res);
     if (pathname === '/.well-known/oauth-protected-resource'

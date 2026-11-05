@@ -1337,6 +1337,121 @@ button {
   margin-top: 20px;
 }
 
+.mcp-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.mcp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mcp-head .icon-key {
+  margin-right: -8px;
+}
+
+.import-dialog .mcp-lead {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+}
+
+.mcp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 18px;
+  border-bottom: 1px solid var(--space-line);
+}
+
+.mcp-tab {
+  margin-bottom: -1px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--space-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.mcp-tab:hover {
+  color: var(--space-fg);
+}
+
+.mcp-tab[aria-selected='true'] {
+  border-bottom-color: var(--space-cyan);
+  color: var(--space-fg);
+}
+
+.mcp-body {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.mcp-steps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--space-fg);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.mcp-field {
+  display: grid;
+  gap: 4px;
+}
+
+.mcp-field-label {
+  color: var(--space-quiet);
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mcp-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.mcp-value {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--space-line);
+  border-radius: var(--space-radius);
+  background: var(--space-void);
+  color: var(--space-fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.import-dialog .mcp-note {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.import-dialog p code,
+.mcp-steps code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--space-raised);
+  color: var(--space-fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1120px) {
   .crm-workspace {
     grid-template-columns: 190px minmax(390px, 1fr) 245px;

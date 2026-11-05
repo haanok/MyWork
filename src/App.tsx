@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerWorkspace } from './CustomerWorkspace';
 import { today } from './dates';
-import { IconArrowLeft, IconDownload, IconFolderOpen, IconPlus, IconSearch, IconUpload } from './icons';
+import { fetchMcpInfo, type McpInfo } from './api';
+import { IconArrowLeft, IconDownload, IconFolderOpen, IconPlug, IconPlus, IconSearch, IconUpload } from './icons';
+import { McpConnectDialog } from './McpConnect';
 import { OrbMap } from './OrbMap';
 import { prepareMarkdownImport, type MarkdownImportPreview } from './obsidianImport';
 import { sampleData } from './sample';
@@ -39,6 +41,19 @@ export default function App() {
   const markdownFileRef = useRef<HTMLInputElement>(null);
   const importDialogRef = useRef<HTMLDialogElement>(null);
   const [pendingMarkdownImport, setPendingMarkdownImport] = useState<MarkdownImportPreview | null>(null);
+  const [mcpInfo, setMcpInfo] = useState<McpInfo | null>(null);
+  const [showMcp, setShowMcp] = useState(false);
+
+  useEffect(() => {
+    if (desktop) return;
+    if (import.meta.env.DEV) {
+      setMcpInfo({ enabled: true, url: 'https://mywork.example.com/mcp', clientId: 'example-client-id', issuer: 'https://id.example.com' });
+      return;
+    }
+    let active = true;
+    void fetchMcpInfo().then((info) => { if (active) setMcpInfo(info); });
+    return () => { active = false; };
+  }, [desktop]);
 
   useEffect(() => {
     if (!desktop) return;
@@ -265,6 +280,11 @@ export default function App() {
               Archived <span className="num">{archivedCount}</span>
             </button>
           )}
+          {mcpInfo?.enabled && (
+            <button type="button" className="icon-key" onClick={() => setShowMcp(true)} aria-label="Connect an AI assistant (MCP)" title="Connect via MCP">
+              <IconPlug />
+            </button>
+          )}
           <button type="button" className="icon-key" onClick={exportJson} aria-label="Export board as JSON" title="Export JSON">
             <IconDownload />
           </button>
@@ -362,6 +382,8 @@ export default function App() {
           )}
         </div>
       )}
+
+      {showMcp && mcpInfo?.enabled && <McpConnectDialog info={mcpInfo} onClose={() => setShowMcp(false)} />}
 
       <dialog
         ref={importDialogRef}
