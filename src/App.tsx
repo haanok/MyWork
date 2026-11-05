@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerWorkspace } from './CustomerWorkspace';
 import { today } from './dates';
 import { fetchMcpInfo, type McpInfo } from './api';
-import { IconArrowLeft, IconDownload, IconFolderOpen, IconPlug, IconPlus, IconSearch, IconUpload } from './icons';
+import { IconArrowLeft, IconDownload, IconFolderOpen, IconPlug, IconPlus, IconSearch, IconTransfer, IconUpload } from './icons';
 import { McpConnectDialog } from './McpConnect';
 import { OrbMap } from './OrbMap';
+import { isMac, QUICK_ADD_KEYS, QuickAddDialog } from './QuickAdd';
+import { rankCustomers } from './quickAddParse';
 import { prepareMarkdownImport, type MarkdownImportPreview } from './obsidianImport';
 import { sampleData } from './sample';
-import { localStorageAdapter, obsidianStorageAdapter, parseImport, swaStorageAdapter } from './storage';
+import { localStorageAdapter, obsidianStorageAdapter, parseImport, serverStorageAdapter } from './storage';
 import { useBoard } from './store';
 import type { Task } from './types';
 
@@ -27,9 +29,9 @@ const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
 
 export default function App() {
   const desktop = Boolean(window.customerBoard);
-  const adapter = desktop ? obsidianStorageAdapter : import.meta.env.DEV ? localStorageAdapter : swaStorageAdapter;
-  const sourceLabel = desktop ? 'Obsidian vault' : import.meta.env.DEV ? 'Local preview' : 'SWA Storage';
-  const { data, ready, undo, loadFailed, storageError, actions } = useBoard(adapter);
+  const adapter = desktop ? obsidianStorageAdapter : import.meta.env.DEV ? localStorageAdapter : serverStorageAdapter;
+  const sourceLabel = desktop ? 'Obsidian vault' : import.meta.env.DEV ? 'Local preview' : 'Server';
+  const { data, ready, undo, loadFailed, storageError, actions, hasUnsavedChanges } = useBoard(adapter);
   const compact = useCompact();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState<string | null>(null);
@@ -43,6 +45,10 @@ export default function App() {
   const [pendingMarkdownImport, setPendingMarkdownImport] = useState<MarkdownImportPreview | null>(null);
   const [mcpInfo, setMcpInfo] = useState<McpInfo | null>(null);
   const [showMcp, setShowMcp] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [dataMenuOpen, setDataMenuOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const dataMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (desktop) return;
@@ -91,6 +97,58 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey);
   }, [selectedId]);
 
+  // ⌘K / Ctrl+K opens quick add and ⌘F / Ctrl+F jumps to the customer
+  // search, from anywhere, also while typing in a field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      const key = e.key.toLowerCase();
+      if (key === 'f') {
+        if (document.querySelector('dialog[open]')) return;
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+      if (key !== 'k' || data.customers.length === 0) return;
+      e.preventDefault();
+      setShowQuickAdd(true);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [data.customers.length]);
+
+  // In the browser, warn before leaving while a change is not yet saved (for
+  // example when the server could not be reached). The desktop app writes to
+  // the vault right away and would only block closing the window.
+  useEffect(() => {
+    if (desktop) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges()) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [desktop, hasUnsavedChanges]);
+
+  // Close the import/export menu on an outside click or Escape.
+  useEffect(() => {
+    if (!dataMenuOpen) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!dataMenuRef.current?.contains(e.target as Node)) setDataMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDataMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [dataMenuOpen]);
+
   useEffect(() => {
     if (!notice) return;
     const t = window.setTimeout(() => setNotice(null), 6000);
@@ -123,6 +181,21 @@ export default function App() {
     }
     return { customers: live.size, open, overdue };
   }, [data]);
+
+  // In a customer's workspace the search narrows the customer list.
+  const listed = useMemo(() => {
+    if (!query.trim()) return visible;
+    const ranked = rankCustomers(visible, query);
+    return selected && !ranked.includes(selected) ? [selected, ...ranked] : ranked;
+  }, [visible, query, selected]);
+
+  const openBestMatch = () => {
+    const best = rankCustomers(visible, query)[0];
+    if (!best) return;
+    setSelectedId(best.id);
+    setQuery('');
+    searchRef.current?.blur();
+  };
 
   const archivedCount = data.customers.filter((c) => c.status === 'archived').length;
 
@@ -203,7 +276,7 @@ export default function App() {
         <main className="vault-setup">
           <div className="vault-setup-content">
             <h2>Could not load your customer data</h2>
-            <p>{storageError ?? 'Check your connection and SWA sign-in, then retry.'}</p>
+            <p>{storageError ?? 'Check your connection and sign-in, then retry.'}</p>
             <button type="button" className="crm-primary" onClick={() => window.location.reload()}>Retry</button>
           </div>
         </main>
@@ -215,7 +288,7 @@ export default function App() {
     return (
       <div className="app">
         <header className="deck">
-          <h1 className="wordmark">Customer board</h1>
+          <h1 className="wordmark">MyWork</h1>
         </header>
         <main className="vault-setup">
           <div className="vault-setup-content">
@@ -238,7 +311,7 @@ export default function App() {
             Map
           </button>
         )}
-        <h1 className="wordmark">Customer board</h1>
+        <h1 className="wordmark">MyWork</h1>
 
         {!selected && <p className="tally" role="status">
           <span className="tally-item">
@@ -264,11 +337,23 @@ export default function App() {
             <IconSearch width={16} height={16} />
             <span className="visually-hidden">Find a customer</span>
             <input
+              ref={searchRef}
               type="search"
               placeholder="Find customer"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  openBestMatch();
+                } else if (e.key === 'Escape') {
+                  setQuery('');
+                  e.currentTarget.blur();
+                }
+              }}
+              title="Name or short name. Enter opens the best match."
             />
+            {!query && <kbd className="search-kbd" aria-hidden="true">{isMac ? '⌘F' : 'Ctrl+F'}</kbd>}
           </label>
           {!selected && archivedCount > 0 && (
             <button
@@ -280,25 +365,55 @@ export default function App() {
               Archived <span className="num">{archivedCount}</span>
             </button>
           )}
+          {data.customers.length > 0 && (
+            <button
+              type="button"
+              className="key quick-add-key"
+              onClick={() => setShowQuickAdd(true)}
+              title={`Quick add a task for any customer (${QUICK_ADD_KEYS})`}
+            >
+              <IconPlus width={15} height={15} />
+              Quick add <kbd>{QUICK_ADD_KEYS}</kbd>
+            </button>
+          )}
           {mcpInfo?.enabled && (
             <button type="button" className="icon-key" onClick={() => setShowMcp(true)} aria-label="Connect an AI assistant (MCP)" title="Connect via MCP">
               <IconPlug />
             </button>
           )}
-          <button type="button" className="icon-key" onClick={exportJson} aria-label="Export board as JSON" title="Export JSON">
-            <IconDownload />
-          </button>
-          {!desktop && (
-            <>
+          {desktop ? (
+            <button type="button" className="icon-key" onClick={exportJson} aria-label="Export board as JSON" title="Export JSON">
+              <IconDownload />
+            </button>
+          ) : (
+            <div className="data-menu" ref={dataMenuRef}>
               <button
                 type="button"
-                className="icon-key markdown-import-key"
-                onClick={chooseMarkdownFolder}
-                aria-label="Import Obsidian Markdown folder"
-                title="Import Obsidian folder"
+                className="icon-key data-menu-key"
+                aria-label="Import or export"
+                title="Import / export"
+                aria-haspopup="menu"
+                aria-expanded={dataMenuOpen}
+                onClick={() => setDataMenuOpen((open) => !open)}
               >
-                <IconFolderOpen />
+                <IconTransfer />
               </button>
+              {dataMenuOpen && (
+                <div className="data-menu-list" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); exportJson(); }}>
+                    <IconDownload width={16} height={16} />
+                    Export JSON
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); fileRef.current?.click(); }}>
+                    <IconUpload width={16} height={16} />
+                    Import JSON…
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); chooseMarkdownFolder(); }}>
+                    <IconFolderOpen width={16} height={16} />
+                    Import Obsidian folder…
+                  </button>
+                </div>
+              )}
               <input
                 ref={markdownFileRef}
                 type="file"
@@ -311,9 +426,6 @@ export default function App() {
                   void importMarkdownFiles(files);
                 }}
               />
-              <button type="button" className="icon-key" onClick={() => fileRef.current?.click()} aria-label="Import board from JSON" title="Import JSON">
-                <IconUpload />
-              </button>
               <input
                 ref={fileRef}
                 type="file"
@@ -321,7 +433,7 @@ export default function App() {
                 hidden
                 onChange={(e) => void importJson(e.target.files?.[0])}
               />
-            </>
+            </div>
           )}
           {!selected && (
             <button type="button" className="key primary" onClick={addCustomer}>
@@ -337,7 +449,7 @@ export default function App() {
           <CustomerWorkspace
             key={selected.id}
             customer={selected}
-            customers={visible}
+            customers={listed}
             tasks={data.tasks}
             autoFocusName={justAdded === selected.id}
             sourceLabel={sourceLabel}
@@ -383,6 +495,19 @@ export default function App() {
         </div>
       )}
 
+      {showQuickAdd && (
+        <QuickAddDialog
+          customers={data.customers}
+          current={selected}
+          onClose={() => setShowQuickAdd(false)}
+          onAdd={(customerId, title, priority, due) => {
+            actions.addTask(customerId, title, '', priority, due);
+            const name = data.customers.find((c) => c.id === customerId)?.name ?? 'customer';
+            setNotice(`Task added to ${name}.`);
+          }}
+        />
+      )}
+
       {showMcp && mcpInfo?.enabled && <McpConnectDialog info={mcpInfo} onClose={() => setShowMcp(false)} />}
 
       <dialog
@@ -408,7 +533,7 @@ export default function App() {
               <li>{pendingMarkdownImport.updatedTasks} matching {pendingMarkdownImport.updatedTasks === 1 ? 'task' : 'tasks'} updated</li>
             </ul>
             <p className="import-preservation">
-              Matching notes update by stable ID. Azure records absent from this folder are retained; nothing is deleted.
+              Matching notes update by stable ID. Existing records absent from this folder are retained; nothing is deleted.
             </p>
             <div className="import-actions">
               <button type="button" className="crm-secondary" onClick={closeMarkdownImport}>Cancel</button>

@@ -88,3 +88,9 @@ export const IconCopy = (p: SVGProps<SVGSVGElement>) => (
     <path d="M15.5 8.5V5.5A1 1 0 0 0 14.5 4.5h-9a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3" />
   </svg>
 );
+
+export const IconTransfer = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M8 18.5V5M4.5 8.5L8 5l3.5 3.5M16 5.5V19M12.5 15.5L16 19l3.5-3.5" />
+  </svg>
+);

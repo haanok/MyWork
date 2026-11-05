@@ -424,7 +424,6 @@ async function route(req, res) {
     return send(res, 302, '', { Location: '/oauth2/sign_out?rd=%2F', 'Cache-Control': 'no-store' });
   }
   if (pathname.startsWith('/.auth/')) return sendText(res, 404, 'Not found.');
-  if (pathname === '/staticwebapp.config.json') return sendText(res, 404, 'Not found.');
   return handleStatic(req, res, pathname);
 }
 

@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Vite + React + TypeScript frontend deployed to Azure Static Web Apps (SWA). SWA authentication uses Microsoft Entra ID. The SWA `/api/data` route is linked to an Azure Functions backend, which stores each authenticated user's data in Azure Blob Storage using the server-provided Entra object ID. Local Vite development uses localStorage; the packaged Mac app uses an Obsidian vault.
+Vite + React + TypeScript frontend served by a self-hosted Node server (`server/`) behind oauth2-proxy and Pocket ID. The server implements `/api/data` and stores each signed-in user's data as a JSON file keyed by their Pocket ID `sub`; it can also expose a remote MCP endpoint for Claude. Local Vite development uses localStorage; the packaged Mac app uses an Obsidian vault.
 
 ## Users
 
@@ -30,10 +30,10 @@ Frequent context switching during a workday. Quick capture while on calls or bet
 
 - Orb = customer on the home map; tasks appear in that customer's ledger.
 - Customer context holds notes, contacts, status, and a task ledger with titles, descriptions, due dates, priority, and status.
-- Production web persistence uses the same-origin SWA API and per-user Azure Blob data; localStorage is only the Vite development adapter.
-- The Azure Function is linked to SWA, and direct Function App access is restricted so the SWA-injected identity header is trusted only on the linked route.
-- The Mac app persists to Obsidian Markdown; it does not use Azure storage.
-- JSON export/import, Obsidian Markdown folder import, and customer search are implemented. The MyWork Sync Obsidian plugin supports automatic two-way note sync with timestamp conflict handling and task-deletion tombstones. Activation requires an Entra public-client app, delegated API scope, and matching Function App settings. Time tracking and due-date reminders remain undecided.
+- Production web persistence uses the same-origin `/api/data` on the self-hosted server, with per-user JSON files; localStorage is only the Vite development adapter.
+- The server verifies the Pocket ID token on every request; saves are conditional on the ETag, and conflicting edits (another tab, or Claude via MCP) are merged per customer and task.
+- The Mac app persists to Obsidian Markdown; it does not use the server.
+- JSON export/import, Obsidian Markdown folder import, and customer search are implemented. A quick-add box (⌘K / Ctrl+K) captures a task for any customer from anywhere in the app. Time tracking and due-date reminders remain undecided.
 
 ## Evidence on Hand
 

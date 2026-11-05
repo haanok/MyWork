@@ -11,6 +11,8 @@ export interface Contact {
 export interface Customer {
   id: string;
   name: string;
+  /** Optional short name, e.g. "sg", for typing "sg: …" in quick add. */
+  shortName?: string;
   status: CustomerStatus;
   notes: string;
   contacts: Contact[];

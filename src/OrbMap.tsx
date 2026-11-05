@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { today } from './dates';
 import { IconCheck, IconPlus } from './icons';
 import { summarize } from './store';
+import { rankCustomers } from './quickAddParse';
 import type { Customer, Task } from './types';
 import { CORD_DROP, useOrbLayout, type LayoutSpec } from './useOrbLayout';
 
@@ -144,6 +145,7 @@ export function OrbMap({
   };
 
   const q = query.trim().toLowerCase();
+  const matching = useMemo(() => new Set(rankCustomers(customers, query).map((c) => c.id)), [customers, query]);
   const t0 = today();
   const focusPos = selectedId ? positions.get(selectedId) : undefined;
   const showCord = focusPos && !compact && size.width > 0;
@@ -164,7 +166,7 @@ export function OrbMap({
         const s = summaries.get(c.id)!;
         const pos = positions.get(c.id);
         const lr = customerLampR(s.open);
-        const dim = q !== '' && !c.name.toLowerCase().includes(q);
+        const dim = q !== '' && !matching.has(c.id);
         const selected = c.id === selectedId;
         const muted = selectedId !== null && !selected;
         const style: CSSProperties = {

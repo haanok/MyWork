@@ -34,7 +34,7 @@
   },
   "build": {
     "appId": "com.mywork.customerboard",
-    "productName": "Customer Board",
+    "productName": "MyWork",
     "directories": {
       "output": "release"
     },

@@ -83,7 +83,6 @@ before(async () => {
   await fs.mkdir(dataDir);
   await fs.writeFile(path.join(distDir, 'index.html'), '<!doctype html><title>index</title>');
   await fs.writeFile(path.join(distDir, 'assets', 'app-abc123.js'), 'console.log(1)');
-  await fs.writeFile(path.join(distDir, 'staticwebapp.config.json'), '{"auth":{}}');
   await fs.writeFile(path.join(tmp, 'secret.txt'), 'TOP-SECRET');
 
   const makeKey = async (kid) => ({ kid, ...(await generateKeyPair('RS256', { extractable: true })) });
@@ -221,7 +220,6 @@ test('static files, cache headers and SPA fallback', async () => {
   assert.match(spa.body, /<title>index<\/title>/);
   assert.equal(spa.headers['cache-control'], 'no-cache');
 
-  assert.equal((await request('GET', '/staticwebapp.config.json')).status, 404);
   assert.equal((await request('GET', '/api/obsidian/data')).status, 404);
   assert.equal((await request('GET', '/api/unknown')).status, 404);
   assert.equal((await request('POST', '/')).status, 405);

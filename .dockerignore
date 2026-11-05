@@ -12,7 +12,6 @@ coverage
 **/*.key
 **/*.pfx
 **/*.p12
-api
 current.json
 .vscode
 .idea
