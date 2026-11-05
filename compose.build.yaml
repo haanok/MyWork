@@ -1,0 +1,8 @@
+# Override that builds the app image from this checkout instead of pulling it:
+#   docker compose -f compose.yaml -f compose.build.yaml up -d --build
+services:
+  app:
+    image: mywork-selfhost:local
+    build:
+      context: .
+      dockerfile: Dockerfile.selfhost
