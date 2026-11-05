@@ -16,6 +16,9 @@ services:
       POCKET_ID_URL: ${POCKET_ID_URL:?set POCKET_ID_URL in .env}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID in .env}
       ALLOWED_GROUPS: ${ALLOWED_GROUPS:-}
+      # Remote MCP for Claude (README, "Use MyWork from Claude"). Off when empty.
+      MCP_CLIENT_ID: ${MCP_CLIENT_ID:-}
+      PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
     volumes:
       # Named volume by default; set DATA_PATH to a host directory to bind-mount it.
       - ${DATA_PATH:-mywork-data}:/data
@@ -56,8 +59,14 @@ services:
       # Pocket ID reports email_verified=false for users whose address has not
       # been verified; oauth2-proxy then refuses the login unless this is true.
       OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: ${ALLOW_UNVERIFIED_EMAIL:-false}
-      # Only needed if /api/obsidian/ is implemented again (it currently returns 404):
-      # OAUTH2_PROXY_SKIP_AUTH_ROUTES: ^/api/obsidian/
+      # /mcp and its OAuth metadata authenticate with Claude's own bearer token,
+      # which the app verifies; they must not get the cookie login redirect.
+      # (If /api/obsidian/ is implemented again, add ^/api/obsidian/ here.)
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: ^/mcp$$,^/\.well-known/oauth-protected-resource(/mcp)?$$
+      # By default oauth2-proxy strips the Authorization header (because it
+      # sets it itself), which would also drop Claude's token on the routes
+      # above. Keep it; the app verifies every token and ignores X-Forwarded-*.
+      OAUTH2_PROXY_SKIP_AUTH_STRIP_HEADERS: "false"
 
 volumes:
   mywork-data:

@@ -1,6 +1,8 @@
 // Self-hosted backend for MyWork: serves the built frontend from dist/ and
 // implements GET/PUT /api/data, authenticated by an OIDC ID token from
 // Pocket ID that oauth2-proxy forwards in the Authorization header.
+// Optionally also serves a remote MCP endpoint at /mcp for Claude, which
+// authenticates with its own Pocket ID access token (audience MCP_CLIENT_ID).
 import http from 'node:http';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -8,6 +10,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createStorage } from './storage.mjs';
+import { handleMcp } from './mcp.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,6 +32,20 @@ const ISSUER = requireEnv('POCKET_ID_URL').replace(/\/+$/, '');
 const AUDIENCE = requireEnv('OIDC_CLIENT_ID');
 const ALLOWED_GROUPS = (process.env.ALLOWED_GROUPS || '')
   .split(',').map((group) => group.trim()).filter(Boolean);
+// MCP is enabled only when both are set.
+const MCP_CLIENT_ID = process.env.MCP_CLIENT_ID?.trim() || '';
+const PUBLIC_URL = (process.env.PUBLIC_URL?.trim() || '').replace(/\/+$/, '');
+const MCP_ENABLED = Boolean(MCP_CLIENT_ID && PUBLIC_URL);
+if (MCP_CLIENT_ID && !PUBLIC_URL) {
+  console.error('MCP_CLIENT_ID is set but PUBLIC_URL is not; /mcp stays disabled.');
+}
+if (MCP_CLIENT_ID && MCP_CLIENT_ID === AUDIENCE) {
+  console.error('MCP_CLIENT_ID must be a separate Pocket ID client from OIDC_CLIENT_ID.');
+  process.exit(1);
+}
+const RESOURCE_METADATA_URL = `${PUBLIC_URL}/.well-known/oauth-protected-resource`;
+
+const storage = createStorage(DATA_DIR);
 
 // The discovery URL may only be overridden outside production (used by the
 // tests to point at a local JWKS). In production it is always derived from
@@ -44,9 +62,9 @@ if (process.env.OIDC_DISCOVERY_URL) {
 const SUB_PATTERN = /^[0-9a-f-]{36}$/i;
 const ALGORITHMS = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512', 'ES256', 'ES384', 'ES512', 'EdDSA'];
 
-let jwksPromise;
-function getJwks() {
-  jwksPromise ??= (async () => {
+let oidcPromise;
+function getOidc() {
+  oidcPromise ??= (async () => {
     const response = await fetch(discoveryUrl, { signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new Error(`OIDC discovery returned ${response.status}`);
     const config = await response.json();
@@ -55,29 +73,58 @@ function getJwks() {
     }
     if (typeof config.jwks_uri !== 'string') throw new Error('OIDC discovery has no jwks_uri');
     console.log(`OIDC discovery loaded; jwks_uri=${config.jwks_uri}`);
-    return createRemoteJWKSet(new URL(config.jwks_uri));
+    return {
+      jwks: createRemoteJWKSet(new URL(config.jwks_uri)),
+      userinfoEndpoint: typeof config.userinfo_endpoint === 'string' ? config.userinfo_endpoint : null,
+    };
   })().catch((error) => {
-    jwksPromise = undefined; // retry on the next request
+    oidcPromise = undefined; // retry on the next request
     throw error;
   });
-  return jwksPromise;
+  return oidcPromise;
 }
 
 class HttpError extends Error {
-  constructor(status, message) {
+  constructor(status, message, headers = {}) {
     super(message);
     this.status = status;
+    this.headers = headers;
   }
 }
 
-// Returns the verified Pocket ID user ID (sub), or throws HttpError 401/403.
-async function authenticate(req) {
-  const match = /^Bearer\s+([A-Za-z0-9._~+/=-]+)$/i.exec(req.headers.authorization || '');
-  if (!match) throw new HttpError(401, 'Missing bearer token.');
+// Access tokens usually carry no groups claim, so MCP group checks ask the
+// userinfo endpoint. Results are cached briefly per token.
+const userinfoCache = new Map();
+const USERINFO_TTL_MS = 5 * 60 * 1000;
 
-  let jwks;
+async function groupsFromUserinfo(token, userinfoEndpoint) {
+  const cacheKey = crypto.createHash('sha256').update(token).digest('base64url');
+  const cached = userinfoCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return cached.groups;
+  if (!userinfoEndpoint) return [];
+  const response = await fetch(userinfoEndpoint, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new HttpError(401, 'Token rejected by the identity provider.');
+  const info = await response.json();
+  const groups = Array.isArray(info.groups) ? info.groups.filter((group) => typeof group === 'string') : [];
+  for (const [key, value] of userinfoCache) if (value.expires <= Date.now()) userinfoCache.delete(key);
+  userinfoCache.set(cacheKey, { groups, expires: Date.now() + USERINFO_TTL_MS });
+  return groups;
+}
+
+// Verifies the bearer token for the given audience and returns the Pocket ID
+// user ID (sub), or throws HttpError 401/403/503.
+async function authenticate(req, { audience = AUDIENCE, challenge = {} } = {}) {
+  const fail = (status, message) => new HttpError(status, message, status === 401 ? challenge : {});
+  const match = /^Bearer\s+([A-Za-z0-9._~+/=-]+)$/i.exec(req.headers.authorization || '');
+  if (!match) throw fail(401, 'Missing bearer token.');
+  const token = match[1];
+
+  let oidc;
   try {
-    jwks = await getJwks();
+    oidc = await getOidc();
   } catch (error) {
     console.error('OIDC discovery failed:', error.message);
     throw new HttpError(503, 'Identity provider unavailable.');
@@ -85,23 +132,32 @@ async function authenticate(req) {
 
   let payload;
   try {
-    ({ payload } = await jwtVerify(match[1], jwks, {
+    ({ payload } = await jwtVerify(token, oidc.jwks, {
       issuer: ISSUER,
-      audience: AUDIENCE,
+      audience,
       algorithms: ALGORITHMS,
       clockTolerance: 30,
       requiredClaims: ['exp', 'sub'],
     }));
   } catch (error) {
-    throw new HttpError(401, 'Invalid token.');
+    throw fail(401, 'Invalid token.');
   }
 
   if (typeof payload.sub !== 'string' || !SUB_PATTERN.test(payload.sub)) {
-    throw new HttpError(401, 'Invalid subject.');
+    throw fail(401, 'Invalid subject.');
   }
   if (ALLOWED_GROUPS.length > 0) {
-    const groups = Array.isArray(payload.groups) ? payload.groups : [];
-    if (!groups.some((group) => ALLOWED_GROUPS.includes(group))) {
+    let groups = Array.isArray(payload.groups) ? payload.groups : null;
+    if (!groups && audience !== AUDIENCE) {
+      try {
+        groups = await groupsFromUserinfo(token, oidc.userinfoEndpoint);
+      } catch (error) {
+        if (error instanceof HttpError) throw fail(error.status, error.message);
+        console.error('Userinfo lookup failed:', error.message);
+        throw new HttpError(503, 'Identity provider unavailable.');
+      }
+    }
+    if (!(groups ?? []).some((group) => ALLOWED_GROUPS.includes(group))) {
       throw new HttpError(403, 'User is not in an allowed group.');
     }
   }
@@ -143,30 +199,20 @@ function readBody(req) {
   });
 }
 
-const seenUsers = new Set();
-
 async function handleData(req, res) {
   if (req.method !== 'GET' && req.method !== 'PUT') {
     send(res, 405, '', { Allow: 'GET, PUT' });
     return;
   }
   const sub = await authenticate(req);
-  const userDir = path.join(DATA_DIR, sub);
-  const file = path.join(userDir, 'data.json');
 
   if (req.method === 'GET') {
-    let text;
-    try {
-      text = await fs.readFile(file, 'utf8');
-    } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-      if (!seenUsers.has(sub)) {
-        seenUsers.add(sub);
-        console.log(`No stored data for user sub=${sub}; expected at ${file}`);
-      }
-      text = JSON.stringify({ version: 1, customers: [], tasks: [] });
-    }
-    send(res, 200, text, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    const { text, etag } = await storage.read(sub);
+    send(res, 200, text, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      ETag: etag,
+    });
     return;
   }
 
@@ -183,22 +229,58 @@ async function handleData(req, res) {
     return;
   }
 
-  await fs.mkdir(userDir, { recursive: true, mode: 0o700 });
-  const tmp = path.join(userDir, `.data.json.${process.pid}.${crypto.randomBytes(6).toString('hex')}.tmp`);
-  try {
-    const handle = await fs.open(tmp, 'wx', 0o600);
-    try {
-      await handle.writeFile(body);
-      await handle.sync();
-    } finally {
-      await handle.close();
+  // If-Match makes the save conditional: when the stored document changed
+  // since the client loaded it (for example through /mcp), refuse with 412
+  // instead of overwriting. Without If-Match the save is unconditional.
+  const ifMatch = req.headers['if-match']?.trim();
+  const result = await storage.withLock(sub, async () => {
+    if (ifMatch && ifMatch !== '*') {
+      const current = await storage.read(sub);
+      const accepted = ifMatch.split(',').map((tag) => tag.trim().replace(/^W\//, ''));
+      if (!accepted.includes(current.etag)) return { conflict: true, etag: current.etag };
     }
-    await fs.rename(tmp, file);
-  } catch (error) {
-    await fs.rm(tmp, { force: true });
-    throw error;
+    return { etag: await storage.write(sub, body) };
+  });
+  if (result.conflict) {
+    send(res, 412, 'The data was changed elsewhere. Reload before saving.', {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      ETag: result.etag,
+    });
+    return;
   }
-  send(res, 204);
+  send(res, 204, '', { ETag: result.etag });
+}
+
+function sendJson(res, status, value, headers = {}) {
+  send(res, status, JSON.stringify(value), {
+    'Content-Type': 'application/json; charset=utf-8',
+    ...headers,
+  });
+}
+
+// RFC 9728 protected resource metadata: tells MCP clients (Claude) which
+// authorization server issues tokens for /mcp.
+function handleResourceMetadata(req, res) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    send(res, 405, '', { Allow: 'GET, HEAD' });
+    return;
+  }
+  sendJson(res, 200, {
+    resource: `${PUBLIC_URL}/mcp`,
+    authorization_servers: [ISSUER],
+    scopes_supported: ['openid', 'profile', 'email', 'groups'],
+    bearer_methods_supported: ['header'],
+    resource_name: 'MyWork',
+  }, { 'Cache-Control': 'public, max-age=3600', 'Access-Control-Allow-Origin': '*' });
+}
+
+async function handleMcpRoute(req, res) {
+  const sub = await authenticate(req, {
+    audience: MCP_CLIENT_ID,
+    challenge: { 'WWW-Authenticate': `Bearer resource_metadata="${RESOURCE_METADATA_URL}"` },
+  });
+  await handleMcp(req, res, { sub, storage, readBody });
 }
 
 const MIME_TYPES = {
@@ -308,6 +390,13 @@ async function route(req, res) {
 
   if (pathname === '/healthz') return sendText(res, 200, 'ok');
   if (pathname === '/api/data') return handleData(req, res);
+  if (MCP_ENABLED) {
+    if (pathname === '/mcp') return handleMcpRoute(req, res);
+    if (pathname === '/.well-known/oauth-protected-resource'
+      || pathname === '/.well-known/oauth-protected-resource/mcp') {
+      return handleResourceMetadata(req, res);
+    }
+  }
   if (pathname === '/api' || pathname.startsWith('/api/')) return sendText(res, 404, 'Not found.');
   if (pathname === '/.auth/login/aad') return handleLogin(req, res);
   if (pathname === '/.auth/logout') {
@@ -326,7 +415,10 @@ const server = http.createServer((req, res) => {
         res.setHeader('Connection', 'close');
         res.on('finish', () => req.destroy());
       }
-      if (!res.headersSent) sendText(res, error.status, error.message);
+      if (!res.headersSent) {
+        for (const [name, value] of Object.entries(error.headers ?? {})) res.setHeader(name, value);
+        sendText(res, error.status, error.message);
+      }
       else res.destroy();
       return;
     }
@@ -338,7 +430,8 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`MyWork listening on :${PORT} (data=${DATA_DIR}, dist=${DIST_DIR}, issuer=${ISSUER})`);
-  getJwks().catch((error) => console.error('Initial OIDC discovery failed (will retry):', error.message));
+  console.log(MCP_ENABLED ? `MCP enabled at ${PUBLIC_URL}/mcp (client ${MCP_CLIENT_ID})` : 'MCP disabled (set MCP_CLIENT_ID and PUBLIC_URL to enable)');
+  getOidc().catch((error) => console.error('Initial OIDC discovery failed (will retry):', error.message));
 });
 
 for (const signal of ['SIGTERM', 'SIGINT']) {

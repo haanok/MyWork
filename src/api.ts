@@ -3,6 +3,18 @@ import { emptyData, type AppData } from './types';
 const DATA_URL = '/api/data';
 const LOGIN_URL = '/.auth/login/aad';
 
+/** Thrown when the server refuses a save because the data changed elsewhere (HTTP 412). */
+export class DataConflictError extends Error {
+  constructor() {
+    super('The data was changed elsewhere.');
+    this.name = 'DataConflictError';
+  }
+}
+
+// ETag of the version this tab last loaded or saved. The self-hosted server
+// sends one; Azure Static Web Apps does not, and then saves stay unconditional.
+let currentEtag: string | null = null;
+
 function normalizeData(value: unknown): AppData {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('The SWA API returned invalid customer data.');
@@ -43,6 +55,10 @@ async function requestData(init?: RequestInit) {
     throw new Error('Your SWA session has expired. Redirecting to sign in.');
   }
 
+  if (response.status === 412) {
+    throw new DataConflictError();
+  }
+
   if (!response.ok) {
     throw new Error(`SWA data request failed (${response.status}).`);
   }
@@ -50,19 +66,35 @@ async function requestData(init?: RequestInit) {
   return response;
 }
 
-export async function loadData(): Promise<AppData> {
+/** Fetches the stored data and its ETag without adopting the ETag for later saves. */
+export async function fetchData(): Promise<{ data: AppData; etag: string | null }> {
   const response = await requestData();
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.toLowerCase().includes('application/json')) {
     throw new Error('The SWA route did not return JSON. Confirm that /api/data is linked to the Function App.');
   }
-  return normalizeData(await response.json());
+  return { data: normalizeData(await response.json()), etag: response.headers.get('etag') };
+}
+
+/** Makes later saves conditional on this version (call once the data is shown). */
+export function adoptEtag(etag: string | null) {
+  currentEtag = etag;
+}
+
+export async function loadData(): Promise<AppData> {
+  const { data, etag } = await fetchData();
+  adoptEtag(etag);
+  return data;
 }
 
 export async function saveData(data: AppData): Promise<void> {
-  await requestData({
+  const response = await requestData({
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(currentEtag ? { 'If-Match': currentEtag } : {}),
+    },
     body: JSON.stringify(data),
   });
+  currentEtag = response.headers.get('etag');
 }

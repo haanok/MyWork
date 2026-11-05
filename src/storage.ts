@@ -1,5 +1,5 @@
 import { emptyData, type AppData } from './types';
-import { loadData, saveData } from './api';
+import { adoptEtag, fetchData, loadData, saveData } from './api';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { Customer, CustomerStatus, Task, TaskStatus } from './types';
 
@@ -7,6 +7,12 @@ import type { Customer, CustomerStatus, Task, TaskStatus } from './types';
 export interface StorageAdapter {
   load(): Promise<AppData>;
   save(data: AppData): Promise<void>;
+  /**
+   * Optional: fetch the latest data when the tab regains focus, to pick up
+   * changes made elsewhere (for example by Claude). Call commit() only if the
+   * returned data is actually shown.
+   */
+  refresh?(): Promise<{ data: AppData; commit: () => void }>;
 }
 
 const KEY = 'mywork-board:v1';
@@ -35,6 +41,10 @@ export const localStorageAdapter: StorageAdapter = {
 export const swaStorageAdapter: StorageAdapter = {
   load: loadData,
   save: saveData,
+  async refresh() {
+    const { data, etag } = await fetchData();
+    return { data, commit: () => adoptEtag(etag) };
+  },
 };
 
 interface ParsedNote {

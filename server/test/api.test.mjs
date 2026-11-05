@@ -15,6 +15,9 @@ const serverFile = path.join(path.dirname(fileURLToPath(import.meta.url)), '..',
 const ISSUER = 'https://id.example.test';
 const CLIENT_ID = 'mywork-test-client';
 const SUB = '3f0c1a52-8d4e-4b8a-9c3f-1d2e3f4a5b6c';
+const MCP_CLIENT = 'mywork-claude-test-client';
+const MCP_SUB = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+const PUBLIC = 'https://mywork.example.test';
 
 let tmp, dataDir, distDir, idp, idpPort, app, appPort, key, otherKey;
 
@@ -92,7 +95,16 @@ before(async () => {
   idp = http.createServer((req, res) => {
     res.setHeader('Content-Type', 'application/json');
     if (req.url === '/.well-known/openid-configuration') {
-      res.end(JSON.stringify({ issuer: ISSUER, jwks_uri: `http://127.0.0.1:${idpPort}/custom/jwks.json` }));
+      res.end(JSON.stringify({
+        issuer: ISSUER,
+        jwks_uri: `http://127.0.0.1:${idpPort}/custom/jwks.json`,
+        userinfo_endpoint: `http://127.0.0.1:${idpPort}/userinfo`,
+      }));
+    } else if (req.url === '/userinfo') {
+      // Echoes the test-only claim "userinfo_groups" from the (unverified) token.
+      const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+      const claims = JSON.parse(Buffer.from(token.split('.')[1] || 'e30', 'base64url').toString());
+      res.end(JSON.stringify({ sub: claims.sub, groups: claims.userinfo_groups ?? [] }));
     } else if (req.url === '/custom/jwks.json') {
       res.end(JSON.stringify({ keys: [jwk] }));
     } else {
@@ -110,6 +122,8 @@ before(async () => {
     OIDC_CLIENT_ID: CLIENT_ID,
     OIDC_DISCOVERY_URL: `http://127.0.0.1:${idpPort}/.well-known/openid-configuration`,
     MAX_BODY_BYTES: String(64 * 1024),
+    MCP_CLIENT_ID: MCP_CLIENT,
+    PUBLIC_URL: PUBLIC,
   });
 });
 
@@ -276,5 +290,196 @@ test('ALLOWED_GROUPS restricts access', async () => {
   } finally {
     appPort = saved;
     restricted.child.kill();
+  }
+});
+
+// --- ETag / If-Match ---------------------------------------------------------
+
+test('PUT with a stale If-Match gives 412 and keeps the stored data', async () => {
+  const token = await sign();
+  const first = await request('GET', '/api/data', { token });
+  assert.match(first.headers.etag, /^"[A-Za-z0-9_-]+"$/);
+
+  const docA = { version: 1, customers: [{ id: 'a' }], tasks: [] };
+  const putA = await request('PUT', '/api/data', {
+    token, body: JSON.stringify(docA), headers: { 'If-Match': first.headers.etag },
+  });
+  assert.equal(putA.status, 204);
+  assert.notEqual(putA.headers.etag, first.headers.etag);
+
+  const stale = await request('PUT', '/api/data', {
+    token, body: JSON.stringify({ version: 1, customers: [], tasks: [] }), headers: { 'If-Match': first.headers.etag },
+  });
+  assert.equal(stale.status, 412);
+  assert.equal(stale.headers.etag, putA.headers.etag);
+
+  const get = await request('GET', '/api/data', { token });
+  assert.deepEqual(JSON.parse(get.body), docA);
+  assert.equal(get.headers.etag, putA.headers.etag);
+});
+
+// --- MCP -----------------------------------------------------------------------
+
+const mcpToken = (claims = {}) => sign(claims, { aud: MCP_CLIENT, sub: MCP_SUB });
+
+let rpcId = 0;
+async function rpc(method, params = {}, token) {
+  const res = await request('POST', '/mcp', {
+    token: token ?? await mcpToken(),
+    body: JSON.stringify({ jsonrpc: '2.0', id: ++rpcId, method, params }),
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+  });
+  assert.equal(res.status, 200, res.body);
+  const message = JSON.parse(res.body);
+  assert.ok(!message.error, JSON.stringify(message.error));
+  return message.result;
+}
+
+async function call(name, args) {
+  const result = await rpc('tools/call', { name, arguments: args });
+  return { ...result, value: result.isError ? result.content[0].text : JSON.parse(result.content[0].text) };
+}
+
+test('protected resource metadata points Claude at Pocket ID', async () => {
+  for (const p of ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp']) {
+    const res = await request('GET', p);
+    assert.equal(res.status, 200, p);
+    const meta = JSON.parse(res.body);
+    assert.equal(meta.resource, `${PUBLIC}/mcp`);
+    assert.deepEqual(meta.authorization_servers, [ISSUER]);
+  }
+});
+
+test('/mcp requires a token for the MCP client', async () => {
+  const anon = await request('POST', '/mcp', { body: '{}' });
+  assert.equal(anon.status, 401);
+  assert.equal(anon.headers['www-authenticate'], `Bearer resource_metadata="${PUBLIC}/.well-known/oauth-protected-resource"`);
+
+  // The web app's token (aud = OIDC_CLIENT_ID) is not accepted on /mcp,
+  // and the MCP token is not accepted on /api/data.
+  const web = await request('POST', '/mcp', { token: await sign(), body: '{}' });
+  assert.equal(web.status, 401);
+  assert.match(web.headers['www-authenticate'], /resource_metadata=/);
+  assert.equal((await request('GET', '/api/data', { token: await mcpToken() })).status, 401);
+
+  assert.equal((await request('GET', '/mcp', { token: await mcpToken() })).status, 405);
+});
+
+test('MCP initialize and tools/list', async () => {
+  const init = await rpc('initialize', {
+    protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' },
+  });
+  assert.equal(init.serverInfo.name, 'mywork');
+  const { tools } = await rpc('tools/list');
+  const names = tools.map((tool) => tool.name).sort();
+  assert.deepEqual(names, [
+    'add_contact', 'add_customer', 'add_task', 'append_note', 'delete_task', 'get_customer',
+    'list_customers', 'list_tasks', 'search', 'update_customer', 'update_task',
+  ]);
+  assert.equal(tools.find((tool) => tool.name === 'list_tasks').annotations.readOnlyHint, true);
+  assert.equal(tools.find((tool) => tool.name === 'delete_task').annotations.destructiveHint, true);
+});
+
+test('MCP tools change the same data the web app reads', async () => {
+  const acme = await call('add_customer', { name: 'Acme Synthetic AS' });
+  assert.equal(acme.value.status, 'active');
+  await call('add_customer', { name: 'Acme Other' });
+
+  const ambiguous = await call('add_task', { customer: 'acme', title: 'x' });
+  assert.equal(ambiguous.isError, true);
+  assert.match(ambiguous.value, /several customers/);
+
+  const task = await call('add_task', { customer: 'acme synthetic as', title: 'Send offer', due: '2026-11-20', priority: 'high' });
+  assert.equal(task.value.customer, 'Acme Synthetic AS');
+  await call('append_note', { customer: acme.value.id, text: 'Called about renewal.' });
+  await call('add_contact', { customer: acme.value.id, name: 'Kari', detail: 'CTO' });
+
+  const open = await call('list_tasks', { customer: 'Acme Synthetic' });
+  assert.deepEqual(open.value.map((t) => t.title), ['Send offer']);
+
+  const done = await call('update_task', { task_id: task.value.id, status: 'done', due: '' });
+  assert.equal(done.value.status, 'done');
+  assert.ok(done.value.doneAt);
+  assert.equal(done.value.due, undefined);
+  assert.deepEqual((await call('list_tasks', {})).value, []);
+
+  const found = await call('search', { query: 'renewal' });
+  assert.deepEqual(found.value.customers.map((c) => c.name), ['Acme Synthetic AS']);
+
+  const detail = await call('get_customer', { customer: acme.value.id });
+  assert.match(detail.value.notes, /^\d{4}-\d{2}-\d{2}: Called about renewal\.$/);
+  assert.equal(detail.value.contacts[0].name, 'Kari');
+
+  await call('delete_task', { task_id: task.value.id });
+  const missing = await call('update_task', { task_id: task.value.id, status: 'open' });
+  assert.equal(missing.isError, true);
+
+  const stored = JSON.parse(await fs.readFile(path.join(dataDir, MCP_SUB, 'data.json'), 'utf8'));
+  assert.equal(stored.customers.length, 2);
+  assert.deepEqual(stored.tasks, []);
+  assert.deepEqual(stored.deletedTaskIds, [task.value.id]);
+  assert.ok(stored.customers[0].touchedAt >= stored.customers[0].createdAt);
+});
+
+test('an MCP change makes a stale web save fail with 412', async () => {
+  const webToken = await sign({}, { sub: MCP_SUB });
+  const loaded = await request('GET', '/api/data', { token: webToken });
+  await call('add_customer', { name: 'Added by Claude' });
+
+  const stale = await request('PUT', '/api/data', {
+    token: webToken, body: loaded.body, headers: { 'If-Match': loaded.headers.etag },
+  });
+  assert.equal(stale.status, 412);
+  const now = JSON.parse((await request('GET', '/api/data', { token: webToken })).body);
+  assert.ok(now.customers.some((c) => c.name === 'Added by Claude'));
+});
+
+test('MCP group check falls back to userinfo', async () => {
+  const port = await freePort();
+  const restricted = await startApp({
+    PORT: String(port),
+    DATA_DIR: dataDir,
+    DIST_DIR: distDir,
+    POCKET_ID_URL: ISSUER,
+    OIDC_CLIENT_ID: CLIENT_ID,
+    OIDC_DISCOVERY_URL: `http://127.0.0.1:${idpPort}/.well-known/openid-configuration`,
+    ALLOWED_GROUPS: 'mywork',
+    MCP_CLIENT_ID: MCP_CLIENT,
+    PUBLIC_URL: PUBLIC,
+  });
+  const saved = appPort;
+  appPort = port;
+  try {
+    const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} });
+    const headers = { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' };
+    const denied = await request('POST', '/mcp', { token: await mcpToken({ userinfo_groups: ['other'] }), body, headers });
+    assert.equal(denied.status, 403);
+    const allowed = await request('POST', '/mcp', { token: await mcpToken({ userinfo_groups: ['mywork'] }), body, headers });
+    assert.equal(allowed.status, 200);
+  } finally {
+    appPort = saved;
+    restricted.child.kill();
+  }
+});
+
+test('MCP is off without MCP_CLIENT_ID', async () => {
+  const port = await freePort();
+  const plain = await startApp({
+    PORT: String(port),
+    DATA_DIR: dataDir,
+    DIST_DIR: distDir,
+    POCKET_ID_URL: ISSUER,
+    OIDC_CLIENT_ID: CLIENT_ID,
+    OIDC_DISCOVERY_URL: `http://127.0.0.1:${idpPort}/.well-known/openid-configuration`,
+  });
+  const saved = appPort;
+  appPort = port;
+  try {
+    assert.equal((await request('POST', '/mcp', { token: await mcpToken(), body: '{}' })).status, 405);
+    assert.equal((await request('GET', '/.well-known/oauth-protected-resource')).status, 200, 'SPA fallback');
+    assert.match((await request('GET', '/.well-known/oauth-protected-resource')).body, /<title>index/);
+  } finally {
+    appPort = saved;
+    plain.child.kill();
   }
 });
