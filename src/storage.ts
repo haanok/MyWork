@@ -38,7 +38,7 @@ export const localStorageAdapter: StorageAdapter = {
   },
 };
 
-export const swaStorageAdapter: StorageAdapter = {
+export const serverStorageAdapter: StorageAdapter = {
   load: loadData,
   save: saveData,
   async refresh() {
@@ -200,6 +200,7 @@ function buildIndex(root: string | null, files: VaultMarkdownFile[]): VaultIndex
     const customer: Customer = {
       id: customerId,
       name: text(customerNote.metadata.title) || folder,
+      ...(text(customerNote.metadata.shortName) ? { shortName: text(customerNote.metadata.shortName).toLowerCase() } : {}),
       status: normalizeCustomerStatus(customerNote.metadata.status),
       notes: customerNotes(customerNote.body),
       contacts: normalizeContacts(customerNote.metadata.contacts),
@@ -283,6 +284,7 @@ export const obsidianStorageAdapter: StorageAdapter & {
         ...(vaultIndex.customerMetadata.get(customer.id) ?? {}),
         id: customer.id,
         title: customer.name,
+        shortName: customer.shortName,
         status: customer.status,
         contacts: customer.contacts.map(({ id, name, detail }) => ({ id, name, detail })),
         createdAt: customer.createdAt,

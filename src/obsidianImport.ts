@@ -168,6 +168,7 @@ export function mergeMarkdownNotes(
     importedCustomers.push({
       id: customerId,
       name: valueText(parsedCustomer.metadata.title) || folder,
+      ...(valueText(parsedCustomer.metadata.shortName) ? { shortName: valueText(parsedCustomer.metadata.shortName).toLowerCase() } : {}),
       status: customerStatus(parsedCustomer.metadata.status),
       notes: customerBody(parsedCustomer.body),
       contacts: contacts(parsedCustomer.metadata.contacts),

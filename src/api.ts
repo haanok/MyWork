@@ -11,13 +11,13 @@ export class DataConflictError extends Error {
   }
 }
 
-// ETag of the version this tab last loaded or saved. The self-hosted server
-// sends one; Azure Static Web Apps does not, and then saves stay unconditional.
+// ETag of the version this tab last loaded or saved. The server
+// sends one with every response; without it, saves are unconditional.
 let currentEtag: string | null = null;
 
 function normalizeData(value: unknown): AppData {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('The SWA API returned invalid customer data.');
+    throw new Error('The server returned invalid customer data.');
   }
 
   const record = value as Record<string, unknown>;
@@ -28,7 +28,7 @@ function normalizeData(value: unknown): AppData {
       return { ...emptyData(), legacy: record };
     }
     const fieldList = fields.slice(0, 8).join(', ') || '(none)';
-    throw new Error(`SWA data has an unexpected shape (fields: ${fieldList}); expected a customers array. No changes were saved.`);
+    throw new Error(`Stored data has an unexpected shape (fields: ${fieldList}); expected a customers array. No changes were saved.`);
   }
 
   return {
@@ -52,7 +52,7 @@ async function requestData(init?: RequestInit) {
 
   if (response.status === 401 || response.redirected) {
     window.location.assign(LOGIN_URL);
-    throw new Error('Your SWA session has expired. Redirecting to sign in.');
+    throw new Error('Your session has expired. Redirecting to sign in.');
   }
 
   if (response.status === 412) {
@@ -60,7 +60,7 @@ async function requestData(init?: RequestInit) {
   }
 
   if (!response.ok) {
-    throw new Error(`SWA data request failed (${response.status}).`);
+    throw new Error(`Data request failed (${response.status}).`);
   }
 
   return response;
@@ -71,7 +71,7 @@ export async function fetchData(): Promise<{ data: AppData; etag: string | null 
   const response = await requestData();
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.toLowerCase().includes('application/json')) {
-    throw new Error('The SWA route did not return JSON. Confirm that /api/data is linked to the Function App.');
+    throw new Error('The server did not return JSON for /api/data. Check that you are signed in and that oauth2-proxy forwards /api/ to the app.');
   }
   return { data: normalizeData(await response.json()), etag: response.headers.get('etag') };
 }

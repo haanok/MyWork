@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { today, uid } from './dates';
 import { DataConflictError } from './api';
+import { mergeBoards } from './merge';
 import { localStorageAdapter, type StorageAdapter } from './storage';
 import { emptyData, type AppData, type Customer, type Priority, type Task } from './types';
 
@@ -78,6 +79,7 @@ export function useBoard(adapter: StorageAdapter = localStorageAdapter) {
   const [storageError, setStorageError] = useState<string | null>(null);
   const dataRef = useRef(data);
   const persistedSnapshot = useRef<string | null>(null);
+  const flushSave = useRef<(() => void) | null>(null);
   dataRef.current = data;
 
   useEffect(() => {
@@ -104,18 +106,24 @@ export function useBoard(adapter: StorageAdapter = localStorageAdapter) {
     if (!ready || loadFailed) return;
     const snapshot = JSON.stringify(data);
     if (snapshot === persistedSnapshot.current) return;
-    const t = window.setTimeout(() => {
+    const run = () => {
+      if (flushSave.current === flush) flushSave.current = null;
       void adapter.save(data).then(() => {
         persistedSnapshot.current = snapshot;
         setStorageError(null);
       }).catch((error: unknown) => {
         if (error instanceof DataConflictError) {
-          // Someone else (another tab, or Claude via MCP) saved first. Take
-          // their version rather than overwriting it.
+          // Someone else (another tab, or Claude via MCP) saved first. Merge
+          // our unsaved edits into their version; marking their version as
+          // persisted makes the save effect store the merged result.
+          const base = persistedSnapshot.current ? JSON.parse(persistedSnapshot.current) as AppData : emptyData();
           void adapter.load().then((loaded) => {
+            const { data: merged, overlaps } = mergeBoards(base, dataRef.current, loaded);
             persistedSnapshot.current = JSON.stringify(loaded);
-            dispatch({ type: 'replace', data: loaded });
-            setStorageError('MyWork was changed elsewhere and has been reloaded. Your last change was not saved; please redo it.');
+            dispatch({ type: 'replace', data: merged });
+            if (overlaps.length > 0) {
+              setStorageError(`Changes made elsewhere were merged in. Where both changed the same field (${overlaps.slice(0, 3).join(', ')}${overlaps.length > 3 ? ', …' : ''}), your version was kept.`);
+            }
           }).catch((loadError: unknown) => {
             setStorageError(loadError instanceof Error ? loadError.message : 'Could not reload changed data.');
           });
@@ -123,9 +131,38 @@ export function useBoard(adapter: StorageAdapter = localStorageAdapter) {
         }
         setStorageError(error instanceof Error ? error.message : 'Could not save changes.');
       });
-    }, 200);
-    return () => window.clearTimeout(t);
+    };
+    const t = window.setTimeout(run, 200);
+    const flush = () => {
+      window.clearTimeout(t);
+      run();
+    };
+    flushSave.current = flush;
+    return () => {
+      window.clearTimeout(t);
+      if (flushSave.current === flush) flushSave.current = null;
+    };
   }, [adapter, data, loadFailed, ready]);
+
+  // Save right away, instead of after the short delay, when the tab is
+  // hidden or closed, so a quick edit followed by closing is not lost.
+  useEffect(() => {
+    const flushNow = () => {
+      if (document.visibilityState === 'hidden') flushSave.current?.();
+    };
+    const onPageHide = () => flushSave.current?.();
+    document.addEventListener('visibilitychange', flushNow);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', flushNow);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, []);
+
+  const hasUnsavedChanges = useCallback(
+    () => ready && !loadFailed && JSON.stringify(dataRef.current) !== persistedSnapshot.current,
+    [loadFailed, ready],
+  );
 
   // Pick up changes made elsewhere when the tab becomes visible again, but
   // only while this tab has nothing unsaved.
@@ -236,7 +273,7 @@ export function useBoard(adapter: StorageAdapter = localStorageAdapter) {
     [undo, withUndo],
   );
 
-  return { data, ready, undo, loadFailed, storageError, actions };
+  return { data, ready, undo, loadFailed, storageError, actions, hasUnsavedChanges };
 }
 
 export type Lamp = 'overdue' | 'open' | 'clear';

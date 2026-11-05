@@ -24,10 +24,16 @@ function parseDocument(text) {
   return data;
 }
 
+// Short names are typed as "sg: …" in the app's quick add.
+const shortNameSchema = z.string().trim().toLowerCase().regex(/^[^\s:]{1,12}$/, 'Up to 12 characters, no spaces or colons.')
+  .describe('Short name, e.g. "sg", for quick add');
+
 function resolveCustomer(data, ref) {
   const needle = ref.trim().toLowerCase();
   const byId = data.customers.find((c) => c.id === ref.trim());
   if (byId) return byId;
+  const byShort = data.customers.filter((c) => (c.shortName ?? '').toLowerCase() === needle);
+  if (byShort.length === 1) return byShort[0];
   const exact = data.customers.filter((c) => (c.name ?? '').trim().toLowerCase() === needle);
   if (exact.length === 1) return exact[0];
   const partial = exact.length > 1
@@ -72,6 +78,7 @@ function customerSummary(data, customer) {
   return {
     id: customer.id,
     name: customer.name,
+    ...(customer.shortName ? { shortName: customer.shortName } : {}),
     status: customer.status,
     openTasks: open.length,
     overdueTasks: open.filter((t) => t.due && t.due < today).length,
@@ -88,7 +95,7 @@ function buildServer(sub, storage) {
     {
       instructions:
         'MyWork is a single consultant\'s customer workspace: customers with notes, contacts and a status, '
-        + 'and tasks per customer. Refer to customers by name or id. Dates are YYYY-MM-DD.',
+        + 'and tasks per customer. Refer to customers by name, short name or id. Dates are YYYY-MM-DD.',
     },
   );
 
@@ -190,13 +197,14 @@ function buildServer(sub, storage) {
     description: 'Create a new customer.',
     inputSchema: {
       name: z.string().trim().min(1),
+      shortName: shortNameSchema.optional(),
       status: z.enum(CUSTOMER_STATUSES).optional(),
       notes: z.string().optional(),
     },
     annotations: additive,
-  }, writer((data, { name, status = 'active', notes = '' }, stamp) => {
+  }, writer((data, { name, shortName, status = 'active', notes = '' }, stamp) => {
     const customer = {
-      id: crypto.randomUUID(), name, status, notes, contacts: [], createdAt: stamp, touchedAt: stamp,
+      id: crypto.randomUUID(), name, ...(shortName ? { shortName } : {}), status, notes, contacts: [], createdAt: stamp, touchedAt: stamp,
     };
     data.customers.push(customer);
     return customerSummary(data, customer);
@@ -204,17 +212,20 @@ function buildServer(sub, storage) {
 
   server.registerTool('update_customer', {
     title: 'Update customer',
-    description: 'Rename a customer, change its status, or replace its notes entirely. To add to the notes, use append_note.',
+    description: 'Rename a customer, set its short name (empty string removes it), change its status, or replace its notes entirely. To add to the notes, use append_note.',
     inputSchema: {
       customer: z.string().min(1).describe('Customer name or id'),
       name: z.string().trim().min(1).optional(),
+      shortName: z.union([shortNameSchema, z.literal('')]).optional(),
       status: z.enum(CUSTOMER_STATUSES).optional(),
       notes: z.string().optional().describe('Replaces all existing notes'),
     },
     annotations: { ...additive, destructiveHint: true },
-  }, writer((data, { customer, name, status, notes }, stamp) => {
+  }, writer((data, { customer, name, shortName, status, notes }, stamp) => {
     const c = resolveCustomer(data, customer);
     if (name !== undefined) c.name = name;
+    if (shortName === '') delete c.shortName;
+    else if (shortName !== undefined) c.shortName = shortName;
     if (status !== undefined) c.status = status;
     if (notes !== undefined) c.notes = notes;
     c.touchedAt = stamp;

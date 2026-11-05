@@ -1,7 +1,8 @@
 # MyWork
 
-React/Vite customer workspace with an Electron desktop wrapper and an Azure
-Functions API.
+React/Vite customer workspace with an Electron desktop wrapper (Obsidian
+vault) and a self-hosted Node backend (Pocket ID login, optional remote MCP
+for Claude).
 
 ## Development
 
@@ -13,55 +14,22 @@ npm run dev
 ```
 
 Build the web app with `npm run build`, or start the desktop app with
-`npm run desktop:dev`.
-
-The API in `api/` requires its own `npm ci`, Azure Functions Core Tools,
-local configuration in `api/local.settings.json`, and Azure credentials.
-Local settings, environment files, and `current.json` are intentionally
+`npm run desktop:dev`. In `npm run dev` the board is stored in
+localStorage. Environment files and `current.json` are intentionally
 excluded from Git and the container build context.
 
 ## Container Registry
 
-GitHub Actions builds the web container on pull requests and publishes it
-on pushes to `main` or manual workflow runs. Publishing uses the built-in
-`GITHUB_TOKEN`; no registry password needs to be added to the repository.
-
-Two images are published, each tagged `latest` for `main` and
-`sha-<commit>` for each published build:
-
-- `ghcr.io/haanok/mywork` from `Dockerfile` (frontend only, nginx).
-- `ghcr.io/haanok/mywork-selfhost` from `Dockerfile.selfhost` (frontend
-  and API, used by `compose.yaml`; see the self-hosted section below). New GHCR packages are private
+GitHub Actions builds `ghcr.io/haanok/mywork-selfhost` from
+`Dockerfile.selfhost` (frontend and API, used by `compose.yaml`) on pull
+requests, and publishes it on pushes to `main` or manual workflow runs,
+tagged `latest` for `main` and `sha-<commit>` for each published build.
+Publishing uses the built-in `GITHUB_TOKEN`. New GHCR packages are private
 by default; retain private visibility in the package settings.
 
-For local builds:
-
-```sh
-docker build -t mywork .
-docker run --rm -p 8080:8080 mywork
-```
-
-The web frontend is then available at http://localhost:8080.
-
-## Hosting Requirements
-
-The container serves only the compiled frontend, using unprivileged Nginx.
-It does not include Electron, Azure Functions, or Azure Static Web Apps
-authentication. The existing app depends on same-origin `/api/` and
-`/.auth/` routes provided by Azure Static Web Apps. Nginx returns 404 for
-these routes rather than serving HTML in place of API responses.
-
-A standalone container deployment therefore needs a separately configured,
-authenticated gateway and API before login and cloud data synchronization
-can work. `staticwebapp.config.json` is enforced only by Azure Static Web
-Apps, not by Nginx. Do not expose the Azure Functions `data` endpoint directly
-without trusted authentication middleware: it relies on identity headers
-from Static Web Apps.
-
-Publishing the image does not deploy the app or provision Azure resources.
 ## Self-hosted (Docker Compose + Pocket ID)
 
-`compose.yaml` runs MyWork on your own server without Azure:
+`compose.yaml` runs MyWork on your own server:
 
 ```
 Internet → host nginx (TLS) → oauth2-proxy :4180 → app :7071
@@ -76,14 +44,11 @@ Internet → host nginx (TLS) → oauth2-proxy :4180 → app :7071
   `Authorization: Bearer …` (issuer = `POCKET_ID_URL`, audience =
   `OIDC_CLIENT_ID`, keys from the issuer's discovery document) and stores
   each user's data in the `mywork-data` volume at `/data/<sub>/data.json`.
-  `/.auth/login/aad` and `/.auth/logout` redirect to oauth2-proxy, so the
-  frontend is unchanged and still deploys to Azure Static Web Apps.
+  `/.auth/login/aad` and `/.auth/logout` redirect to oauth2-proxy (the
+  frontend uses these paths for sign-in and sign-out).
 - **oauth2-proxy** handles login and is the only service published on the
   host, on `${BIND_ADDRESS:-127.0.0.1}:${PORT:-4180}`. The stack contains no nginx; the
   host's existing nginx proxies to it.
-
-The original `Dockerfile`/`nginx.conf` image and the GHCR workflow are not
-affected.
 
 ### 1. Create the OIDC client in Pocket ID
 
@@ -166,50 +131,10 @@ Notes:
 - **Logout.** `/.auth/logout` clears the oauth2-proxy session only. The
   Pocket ID session remains, so the next visit signs in again without a
   prompt.
-- **Obsidian plugin.** `/api/obsidian/data` is not available in the
-  self-hosted setup and returns `404`. It validated Entra access tokens; a
-  self-hosted version would need the plugin to obtain tokens from Pocket ID.
 - **Tests.** `cd server && npm ci && npm test` runs the API tests against a
   local JWKS with self-signed tokens.
 
-### 3. Migrate data from Azure
-
-Azure stores data in the blob `userdata/<entra-oid>/data.json`. The
-self-hosted app uses the Pocket ID user's `sub` (a UUID) instead.
-
-1. Download the blob:
-
-   ```sh
-   az storage blob download --auth-mode login \
-     --account-name <storage-account> --container-name userdata \
-     --name <entra-oid>/data.json --file data.json
-   ```
-
-2. Find the user's `sub`. It is the user ID shown on the user's page under
-   **Administration → Users** in Pocket ID. The app also logs it the first
-   time a user without stored data signs in:
-
-   ```sh
-   docker compose logs app | grep 'No stored data for user'
-   ```
-
-3. Copy the file into the volume. Running the copy inside the container
-   gives it the right owner:
-
-   ```sh
-   SUB=<pocket-id-sub>
-   docker compose exec -T app sh -c "mkdir -p /data/$SUB && cat > /data/$SUB/data.json" < data.json
-   ```
-
-   (With `docker compose cp`, the file is owned by root; fix it with
-   `docker compose exec -u root app chown -R 1000:1000 /data/$SUB`, using
-   your `APP_UID:APP_GID` if you changed them. With `DATA_PATH` you can
-   instead copy the file to `$DATA_PATH/$SUB/data.json` on the host and
-   `chown` it to `APP_UID:APP_GID`.)
-
-4. Reload the app in the browser.
-
-### 4. Use MyWork from Claude (remote MCP)
+### 3. Use MyWork from Claude (remote MCP)
 
 The app can also serve a remote [MCP](https://modelcontextprotocol.io)
 server at `${PUBLIC_URL}/mcp`, so Claude (claude.ai, the mobile apps,
@@ -274,8 +199,9 @@ instead of referenced by id.
 **Concurrent edits.** The browser saves the whole document. To keep it
 from overwriting changes Claude made, `GET /api/data` returns an `ETag` and
 the frontend sends it back in `If-Match`. When the stored data changed in
-the meantime the server answers `412`; the frontend then reloads and asks
-the user to redo the last change. The tab also reloads when it regains
+the meantime the server answers `412`; the frontend then loads the new
+version, merges its own unsaved changes into it per customer and task (field
+by field; on the same field, the browser's change wins) and saves again. The tab also reloads when it regains
 focus and has nothing unsaved, so changes from Claude show up when you
 switch back.
 

@@ -54,6 +54,9 @@ export function CustomerWorkspace({
   }, [autoFocusName, customer.id]);
 
   const customerTasks = useMemo(() => tasks.filter((task) => task.customerId === customer.id), [tasks, customer.id]);
+  const shortNameTaken = customer.shortName
+    ? customers.find((entry) => entry.id !== customer.id && entry.shortName === customer.shortName)?.name
+    : undefined;
   const openCount = customerTasks.filter((task) => task.status !== 'done').length;
   const overdueCount = customerTasks.filter((task) => task.status !== 'done' && task.due && task.due < today()).length;
   const doneCount = customerTasks.filter((task) => task.status === 'done').length;
@@ -137,6 +140,25 @@ export function CustomerWorkspace({
               <span className="record-meta">Customer record · Updated {new Date(customer.touchedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
             </div>
           </div>
+          <div className="record-controls">
+          <label className="customer-status-control short-name-control" title="Type this followed by a colon in Quick add, for example “sg: send report”.">
+            <span>Short name</span>
+            <input
+              className="short-name-input"
+              aria-label="Customer short name"
+              aria-describedby={shortNameTaken ? 'short-name-taken' : undefined}
+              placeholder="e.g. sg"
+              maxLength={12}
+              autoComplete="off"
+              spellCheck={false}
+              value={customer.shortName ?? ''}
+              onChange={(event) => {
+                const shortName = event.target.value.toLowerCase().replace(/[\s:]+/g, '');
+                onUpdateCustomer({ shortName: shortName || undefined });
+              }}
+            />
+            {shortNameTaken && <span id="short-name-taken" className="short-name-taken">Also used by {shortNameTaken}</span>}
+          </label>
           <label className="customer-status-control">
             <span>Status</span>
             <select
@@ -147,6 +169,7 @@ export function CustomerWorkspace({
               {CUSTOMER_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
           </label>
+          </div>
         </header>
 
         <div className="queue-summary" aria-label="Task summary">

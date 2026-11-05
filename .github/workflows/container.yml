@@ -25,11 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Frontend only, served by nginx (ghcr.io/<owner>/<repo>).
-          - name: web
-            dockerfile: Dockerfile
-            image_suffix: ""
-          # Self-hosted frontend + API for compose.yaml (ghcr.io/<owner>/<repo>-selfhost).
+          # Frontend + API for compose.yaml (ghcr.io/<owner>/<repo>-selfhost).
           - name: selfhost
             dockerfile: Dockerfile.selfhost
             image_suffix: "-selfhost"

@@ -11,6 +11,9 @@ let vaultRoot = null;
 let watcher = null;
 let watchTimer;
 
+// Settings stayed in the old "Customer Board" folder when the app was renamed.
+app.setPath('userData', path.join(app.getPath('appData'), 'Customer Board'));
+
 const settingsPath = () => path.join(app.getPath('userData'), SETTINGS_FILE);
 
 async function readSettings() {
@@ -153,7 +156,7 @@ function createWindow() {
     minWidth: 850,
     minHeight: 620,
     backgroundColor: '#080b1b',
-    title: 'Customer Board',
+    title: 'MyWork',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

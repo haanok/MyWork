@@ -1,5 +1,5 @@
 ---
-name: Customer board
+name: MyWork
 description: A spacewave customer map that opens into a practical helpdesk task workspace.
 colors:
   space-void: "#080b1b"
@@ -53,7 +53,7 @@ components:
     padding: "18px 4px"
 ---
 
-# Design System: Customer board
+# Design System: MyWork
 
 ## Overview
 
