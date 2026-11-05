@@ -1,0 +1,63 @@
+# Self-hosted MyWork behind oauth2-proxy (OIDC against Pocket ID).
+# The host's own nginx terminates TLS and proxies to oauth2-proxy;
+# see docs/mywork.subdomain.conf and the README section "Self-hosted".
+name: mywork
+
+services:
+  app:
+    # Published by .github/workflows/container.yml. To build locally instead:
+    #   docker compose -f compose.yaml -f compose.build.yaml up -d --build
+    image: ${MYWORK_IMAGE:-ghcr.io/haanok/mywork-selfhost:latest}
+    restart: unless-stopped
+    # node in the image is 1000:1000. For a bind mount owned by another user
+    # (on Unraid nobody:users), set APP_UID=99 and APP_GID=100.
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    environment:
+      POCKET_ID_URL: ${POCKET_ID_URL:?set POCKET_ID_URL in .env}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID in .env}
+      ALLOWED_GROUPS: ${ALLOWED_GROUPS:-}
+    volumes:
+      # Named volume by default; set DATA_PATH to a host directory to bind-mount it.
+      - ${DATA_PATH:-mywork-data}:/data
+    expose:
+      - "7071"
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.5
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-4180}:4180"
+    environment:
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_UPSTREAMS: http://app:7071
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_PROVIDER_DISPLAY_NAME: Pocket ID
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${POCKET_ID_URL:?set POCKET_ID_URL in .env}
+      OAUTH2_PROXY_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID in .env}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET in .env}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET:?set OAUTH2_PROXY_COOKIE_SECRET in .env}
+      OAUTH2_PROXY_REDIRECT_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}/oauth2/callback
+      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
+      OAUTH2_PROXY_SCOPE: openid profile email groups
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      # Forwards the ID token as "Authorization: Bearer"; the app verifies it.
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
+      # Unauthenticated API calls get 401 (the frontend then redirects to login).
+      OAUTH2_PROXY_API_ROUTES: ^/api/
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+      OAUTH2_PROXY_COOKIE_SAMESITE: lax
+      OAUTH2_PROXY_COOKIE_REFRESH: ${COOKIE_REFRESH:-30m}
+      OAUTH2_PROXY_COOKIE_EXPIRE: ${COOKIE_EXPIRE:-168h}
+      # Pocket ID reports email_verified=false for users whose address has not
+      # been verified; oauth2-proxy then refuses the login unless this is true.
+      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: ${ALLOW_UNVERIFIED_EMAIL:-false}
+      # Only needed if /api/obsidian/ is implemented again (it currently returns 404):
+      # OAUTH2_PROXY_SKIP_AUTH_ROUTES: ^/api/obsidian/
+
+volumes:
+  mywork-data:

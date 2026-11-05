@@ -1,0 +1,30 @@
+# Self-hosted MyWork: frontend + /api/data in one Node process.
+# Used by compose.yaml together with oauth2-proxy and Pocket ID.
+# The original Dockerfile (nginx, frontend only) is unchanged.
+
+FROM node:24-alpine AS build
+WORKDIR /app
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY index.html tsconfig.json vite.config.ts staticwebapp.config.json ./
+COPY src ./src
+RUN npm run build
+
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=7071 \
+    DATA_DIR=/data \
+    DIST_DIR=/app/dist
+COPY server/package.json server/package-lock.json ./server/
+RUN cd server && npm ci --omit=dev && npm cache clean --force
+COPY server/server.mjs ./server/
+COPY --from=build /app/dist ./dist
+# A new named volume mounted at /data inherits this ownership.
+RUN mkdir -p /data && chown node:node /data
+USER node
+EXPOSE 7071
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:7071/healthz || exit 1
+CMD ["node", "server/server.mjs"]

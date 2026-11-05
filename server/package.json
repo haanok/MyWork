@@ -1,0 +1,18 @@
+{
+  "name": "mywork-selfhost-server",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted MyWork backend: static frontend + /api/data with Pocket ID (OIDC) tokens.",
+  "type": "module",
+  "main": "server.mjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "jose": "^6.2.15"
+  }
+}
