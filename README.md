@@ -105,7 +105,7 @@ check: the app then also requires one of these names in the token's
 ### 2. Configure and start
 
 On the server you only need `compose.yaml` and `.env` (plus this README
-and `docs/nginx-example.conf` for reference); the app image is pulled from
+and `docs/mywork.subdomain.conf` for reference); the app image is pulled from
 GHCR. The package is private, so log in once with a GitHub personal access
 token (classic) that has the `read:packages` scope:
 
@@ -130,7 +130,7 @@ build from a checkout instead of pulling, run
 `docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 
 Then add a server block to the host's nginx, based on
-[docs/nginx-example.conf](docs/nginx-example.conf). The example uses the SWAG layout
+[docs/mywork.subdomain.conf](docs/mywork.subdomain.conf). The example uses the SWAG layout
 (`/config/nginx/proxy.conf` sets `Host` and `X-Forwarded-Proto/Host/For`).
 It must proxy to `BIND_ADDRESS:PORT` from `.env`; when nginx runs in its own
 container, set `BIND_ADDRESS` to the host's LAN IP, since `127.0.0.1` is not

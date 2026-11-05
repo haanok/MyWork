@@ -1,6 +1,6 @@
 # Self-hosted MyWork behind oauth2-proxy (OIDC against Pocket ID).
 # The host's own nginx terminates TLS and proxies to oauth2-proxy;
-# see docs/nginx-example.conf and the README section "Self-hosted".
+# see docs/mywork.subdomain.conf and the README section "Self-hosted".
 name: mywork
 
 services:
