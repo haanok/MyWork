@@ -222,7 +222,7 @@ access token as `Authorization: Bearer …`. oauth2-proxy lets `/mcp` and
 for every well-known path except `oauth-protected-resource`, so Claude does
 not mistake the login redirect for authorization server metadata),
 and the app verifies the token itself (issuer `POCKET_ID_URL`, audience
-`MCP_CLIENT_ID`). A `401` from `/mcp` points Claude at
+`MCP_CLIENT_ID` or `${PUBLIC_URL}/mcp`). A `401` from `/mcp` points Claude at
 `/.well-known/oauth-protected-resource`, which names Pocket ID as the
 authorization server. Tokens for the web client are not accepted on `/mcp`,
 and Claude's tokens are not accepted on `/api/data`.
@@ -236,6 +236,14 @@ and Claude's tokens are not accepted on `/api/data`.
    - **PKCE:** enabled. Either client type works: a *public* client needs
      only the client ID in Claude; a confidential one also needs its secret.
    - **Allowed user groups:** the same group as the web client.
+
+   - **API (required):** Claude sends `resource=${PUBLIC_URL}/mcp`, and
+     Pocket ID rejects unknown resources with `invalid_request`. Under
+     **Administration → APIs**, add an API whose identifier is exactly
+     `https://mywork.example.com/mcp` (no trailing slash). Then, on the
+     `MyWork Claude` client, **Access → API access → Add API**, choose it
+     with *user-delegated access*. Tokens then have this URL as `aud`,
+     which the app accepts on `/mcp` alongside `MCP_CLIENT_ID`.
 
 2. **Set it in `.env`** and restart:
 

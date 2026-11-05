@@ -44,6 +44,9 @@ if (MCP_CLIENT_ID && MCP_CLIENT_ID === AUDIENCE) {
   process.exit(1);
 }
 const RESOURCE_METADATA_URL = `${PUBLIC_URL}/.well-known/oauth-protected-resource`;
+// RFC 8707 resource indicator for /mcp. When it is registered as an API in
+// Pocket ID, access tokens carry it in aud instead of the client ID.
+const MCP_RESOURCE = `${PUBLIC_URL}/mcp`;
 
 const storage = createStorage(DATA_DIR);
 
@@ -267,7 +270,7 @@ function handleResourceMetadata(req, res) {
     return;
   }
   sendJson(res, 200, {
-    resource: `${PUBLIC_URL}/mcp`,
+    resource: MCP_RESOURCE,
     authorization_servers: [ISSUER],
     scopes_supported: ['openid', 'profile', 'email', 'groups'],
     bearer_methods_supported: ['header'],
@@ -277,7 +280,7 @@ function handleResourceMetadata(req, res) {
 
 async function handleMcpRoute(req, res) {
   const sub = await authenticate(req, {
-    audience: MCP_CLIENT_ID,
+    audience: [MCP_CLIENT_ID, MCP_RESOURCE],
     challenge: { 'WWW-Authenticate': `Bearer resource_metadata="${RESOURCE_METADATA_URL}"` },
   });
   await handleMcp(req, res, { sub, storage, readBody });

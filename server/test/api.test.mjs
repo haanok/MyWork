@@ -373,6 +373,14 @@ test('/mcp requires a token for the MCP client', async () => {
   assert.equal((await request('GET', '/mcp', { token: await mcpToken() })).status, 405);
 });
 
+test('/mcp accepts a token whose audience is the resource URL', async () => {
+  const token = await sign({}, { aud: `${PUBLIC}/mcp`, sub: MCP_SUB });
+  const { tools } = await rpc('tools/list', {}, token);
+  assert.ok(tools.length > 0);
+  // ...but such a token is not valid for the web API.
+  assert.equal((await request('GET', '/api/data', { token })).status, 401);
+});
+
 test('MCP initialize and tools/list', async () => {
   const init = await rpc('initialize', {
     protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' },
