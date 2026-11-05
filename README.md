@@ -208,3 +208,72 @@ self-hosted app uses the Pocket ID user's `sub` (a UUID) instead.
    `chown` it to `APP_UID:APP_GID`.)
 
 4. Reload the app in the browser.
+
+### 4. Use MyWork from Claude (remote MCP)
+
+The app can also serve a remote [MCP](https://modelcontextprotocol.io)
+server at `${PUBLIC_URL}/mcp`, so Claude (claude.ai, the mobile apps,
+Claude Desktop and Claude Code) can read and update customers, notes,
+contacts and tasks. It is off unless `MCP_CLIENT_ID` is set.
+
+Claude signs in through Pocket ID with its own OIDC client and sends the
+access token as `Authorization: Bearer …`. oauth2-proxy lets `/mcp` and
+`/.well-known/oauth-protected-resource` through without a session cookie,
+and the app verifies the token itself (issuer `POCKET_ID_URL`, audience
+`MCP_CLIENT_ID`). A `401` from `/mcp` points Claude at
+`/.well-known/oauth-protected-resource`, which names Pocket ID as the
+authorization server. Tokens for the web client are not accepted on `/mcp`,
+and Claude's tokens are not accepted on `/api/data`.
+
+1. **Create a second OIDC client in Pocket ID** (Pocket ID has no dynamic
+   client registration, so Claude cannot create one itself):
+   - **Name:** for example `MyWork Claude`.
+   - **Callback URL:** `https://claude.ai/api/mcp/auth_callback`. For
+     Claude Code, also add `http://localhost:*/callback` if Pocket ID
+     accepts it, or use the claude.ai connector, which Claude Code can use.
+   - **PKCE:** enabled. Confidential client (not *Public client*).
+   - **Allowed user groups:** the same group as the web client.
+
+2. **Set it in `.env`** and restart:
+
+   ```sh
+   MCP_CLIENT_ID=<client id of "MyWork Claude">
+   ```
+
+   `PUBLIC_URL` must already be set. `docker compose up -d`, then check
+   that `docker compose logs app` shows `MCP enabled at …/mcp`.
+
+3. **Add the connector in Claude:** *Settings → Connectors → Add custom
+   connector*. URL: `https://mywork.example.com/mcp`. Under *Advanced
+   settings*, enter the client ID and client secret of `MyWork Claude`.
+   Click *Connect* and sign in with Pocket ID.
+
+Tools: `list_customers`, `get_customer`, `list_tasks`, `search` (read), and
+`add_customer`, `update_customer`, `append_note`, `add_contact`,
+`add_task`, `update_task`, `delete_task` (write). Customers can be named
+instead of referenced by id.
+
+**Concurrent edits.** The browser saves the whole document. To keep it
+from overwriting changes Claude made, `GET /api/data` returns an `ETag` and
+the frontend sends it back in `If-Match`. When the stored data changed in
+the meantime the server answers `412`; the frontend then reloads and asks
+the user to redo the last change. The tab also reloads when it regains
+focus and has nothing unsaved, so changes from Claude show up when you
+switch back.
+
+**Groups.** If `ALLOWED_GROUPS` is set and Claude's access token has no
+`groups` claim, the app reads the groups from Pocket ID's userinfo
+endpoint (cached for 5 minutes per token).
+
+**Troubleshooting.**
+- *Claude says it cannot connect / no authorization server:* check
+  `curl https://mywork.example.com/.well-known/oauth-protected-resource`
+  returns JSON (not the login page). If it redirects to Pocket ID,
+  oauth2-proxy is not skipping the route; check `OAUTH2_PROXY_SKIP_AUTH_ROUTES`.
+- *`401 Missing bearer token` although Claude is signed in:* oauth2-proxy
+  stripped the `Authorization` header; `OAUTH2_PROXY_SKIP_AUTH_STRIP_HEADERS`
+  must be `"false"`.
+- *`401 Invalid token` after signing in:* `MCP_CLIENT_ID` does not match
+  the client Claude used, or Pocket ID issues access tokens for a
+  different audience. Decode the token's payload and compare `aud`.
+- *`403`:* the user is not in `ALLOWED_GROUPS`.

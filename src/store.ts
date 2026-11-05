@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { today, uid } from './dates';
+import { DataConflictError } from './api';
 import { localStorageAdapter, type StorageAdapter } from './storage';
 import { emptyData, type AppData, type Customer, type Priority, type Task } from './types';
 
@@ -108,11 +109,55 @@ export function useBoard(adapter: StorageAdapter = localStorageAdapter) {
         persistedSnapshot.current = snapshot;
         setStorageError(null);
       }).catch((error: unknown) => {
+        if (error instanceof DataConflictError) {
+          // Someone else (another tab, or Claude via MCP) saved first. Take
+          // their version rather than overwriting it.
+          void adapter.load().then((loaded) => {
+            persistedSnapshot.current = JSON.stringify(loaded);
+            dispatch({ type: 'replace', data: loaded });
+            setStorageError('MyWork was changed elsewhere and has been reloaded. Your last change was not saved; please redo it.');
+          }).catch((loadError: unknown) => {
+            setStorageError(loadError instanceof Error ? loadError.message : 'Could not reload changed data.');
+          });
+          return;
+        }
         setStorageError(error instanceof Error ? error.message : 'Could not save changes.');
       });
     }, 200);
     return () => window.clearTimeout(t);
   }, [adapter, data, loadFailed, ready]);
+
+  // Pick up changes made elsewhere when the tab becomes visible again, but
+  // only while this tab has nothing unsaved.
+  useEffect(() => {
+    const { refresh: fetchLatest } = adapter;
+    if (!fetchLatest || !ready || loadFailed) return;
+    let inFlight = false;
+    const isClean = () => JSON.stringify(dataRef.current) === persistedSnapshot.current;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || inFlight || !isClean()) return;
+      inFlight = true;
+      fetchLatest.call(adapter).then(({ data: loaded, commit }) => {
+        const snapshot = JSON.stringify(loaded);
+        // Unchanged, or the user started editing meanwhile: keep the old
+        // ETag so a save still detects the remote change.
+        if (snapshot === persistedSnapshot.current || !isClean()) return;
+        commit();
+        persistedSnapshot.current = snapshot;
+        dispatch({ type: 'replace', data: loaded });
+      }).catch(() => {
+        // Ignore: the next save or focus will surface real problems.
+      }).finally(() => {
+        inFlight = false;
+      });
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [adapter, loadFailed, ready]);
 
   useEffect(() => {
     if (!undo) return;
