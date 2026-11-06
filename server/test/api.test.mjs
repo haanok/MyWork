@@ -220,7 +220,6 @@ test('static files, cache headers and SPA fallback', async () => {
   assert.match(spa.body, /<title>index<\/title>/);
   assert.equal(spa.headers['cache-control'], 'no-cache');
 
-  assert.equal((await request('GET', '/api/obsidian/data')).status, 404);
   assert.equal((await request('GET', '/api/unknown')).status, 404);
   assert.equal((await request('POST', '/')).status, 405);
 });

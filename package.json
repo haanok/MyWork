@@ -3,57 +3,26 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "desktop:dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
-    "package:mac": "npm run build && electron-builder --mac dmg zip",
-    "package:mac:arm64": "npm run build && electron-builder --mac dmg zip --arm64"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@fontsource/hanken-grotesk": "^5.3.0",
-    "chokidar": "^4.0.3",
     "d3-force": "^3.0.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "yaml": "^2.8.1"
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@types/d3-force": "^3.0.10",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "concurrently": "^9.2.1",
-    "electron": "^38.2.0",
-    "electron-builder": "^26.0.12",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5",
-    "wait-on": "^8.0.4"
-  },
-  "build": {
-    "appId": "com.mywork.customerboard",
-    "productName": "MyWork",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "mac": {
-      "category": "public.app-category.business",
-      "target": [
-        "dmg",
-        "zip"
-      ]
-    }
+    "vite": "^8.3.5"
   },
   "allowScripts": {
-    "fsevents@2.3.3": true,
-    "electron@38.8.6": true,
-    "electron-winstaller@5.4.0": true
+    "fsevents@2.3.3": true
   }
 }

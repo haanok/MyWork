@@ -1,8 +1,7 @@
 # MyWork
 
-React/Vite customer workspace with an Electron desktop wrapper (Obsidian
-vault) and a self-hosted Node backend (Pocket ID login, optional remote MCP
-for Claude).
+React/Vite customer workspace with a self-hosted Node backend (Pocket ID
+login, optional remote MCP for Claude).
 
 ## Development
 
@@ -13,9 +12,8 @@ npm ci
 npm run dev
 ```
 
-Build the web app with `npm run build`, or start the desktop app with
-`npm run desktop:dev`. In `npm run dev` the board is stored in
-localStorage. Environment files and `current.json` are intentionally
+Build the web app with `npm run build`. In `npm run dev` the board is stored
+in localStorage. Environment files and `current.json` are intentionally
 excluded from Git and the container build context.
 
 ## Container Registry

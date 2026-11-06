@@ -18,15 +18,22 @@ interface Props {
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onRemoveTask: (id: string) => void;
   onArchiveCustomer: () => void;
+  onDeleteCustomer: () => void;
 }
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   open: 'Open',
   doing: 'In progress',
-  done: 'Complete',
+  done: 'Completed',
 };
 
 const CUSTOMER_STATUSES: CustomerStatus[] = ['active', 'waiting', 'paused', 'archived'];
+const CUSTOMER_STATUS_LABEL: Record<CustomerStatus, string> = {
+  active: 'Active',
+  waiting: 'Waiting',
+  paused: 'Paused',
+  archived: 'Archived',
+};
 
 export function CustomerWorkspace({
   customer,
@@ -41,6 +48,7 @@ export function CustomerWorkspace({
   onUpdateTask,
   onRemoveTask,
   onArchiveCustomer,
+  onDeleteCustomer,
 }: Props) {
   const nameRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<TaskFilter>('open');
@@ -48,6 +56,12 @@ export function CustomerWorkspace({
   const [description, setDescription] = useState('');
   const [due, setDue] = useState('');
   const [priority, setPriority] = useState<Priority>('normal');
+  const [composerOpen, setComposerOpen] = useState(false);
+  const taskTitleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (composerOpen) taskTitleRef.current?.focus();
+  }, [composerOpen]);
 
   useEffect(() => {
     if (autoFocusName) nameRef.current?.select();
@@ -141,7 +155,7 @@ export function CustomerWorkspace({
             </div>
           </div>
           <div className="record-controls">
-          <label className="customer-status-control short-name-control" title="Type this followed by a colon in Quick add, for example “sg: send report”.">
+          <label className="customer-status-control short-name-control">
             <span>Short name</span>
             <input
               className="short-name-input"
@@ -157,6 +171,7 @@ export function CustomerWorkspace({
                 onUpdateCustomer({ shortName: shortName || undefined });
               }}
             />
+            <span className="short-name-hint">Quick add: “sg: send report”</span>
             {shortNameTaken && <span id="short-name-taken" className="short-name-taken">Also used by {shortNameTaken}</span>}
           </label>
           <label className="customer-status-control">
@@ -166,7 +181,7 @@ export function CustomerWorkspace({
               onChange={(event) => onUpdateCustomer({ status: event.target.value as CustomerStatus })}
               aria-label="Customer status"
             >
-              {CUSTOMER_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+              {CUSTOMER_STATUSES.map((status) => <option key={status} value={status}>{CUSTOMER_STATUS_LABEL[status]}</option>)}
             </select>
           </label>
           </div>
@@ -178,7 +193,16 @@ export function CustomerWorkspace({
           <span><b>{doneCount}</b> completed</span>
         </div>
 
-        <form className="task-composer" onSubmit={submitTask}>
+        <button
+          type="button"
+          className="mobile-log-task crm-primary"
+          aria-expanded={composerOpen}
+          aria-controls="task-composer"
+          onClick={() => setComposerOpen((open) => !open)}
+        >
+          {composerOpen ? 'Close' : 'Log a task'}
+        </button>
+        <form id="task-composer" className={`task-composer${composerOpen ? ' is-open' : ''}`} onSubmit={submitTask}>
           <div className="composer-heading">
             <div>
               <h3>Log a task</h3>
@@ -186,6 +210,7 @@ export function CustomerWorkspace({
             </div>
           </div>
           <input
+            ref={taskTitleRef}
             className="crm-field task-input"
             aria-label="Task title"
             placeholder="Task title"
@@ -241,7 +266,7 @@ export function CustomerWorkspace({
             <div className="queue-empty">
               <span className="empty-mark" aria-hidden="true">+</span>
               <p>{filter === 'done' ? 'No completed tasks yet.' : 'No tasks in this view.'}</p>
-              <span>Use the task form above to record the next action.</span>
+              <span>Log a task to record the next action.</span>
             </div>
           ) : orderedTasks.map((task) => (
             <TaskEntry key={task.id} task={task} onUpdate={onUpdateTask} onRemove={onRemoveTask} />
@@ -308,7 +333,10 @@ export function CustomerWorkspace({
           )}
         </section>
 
-        <button type="button" className="remove-customer" onClick={onArchiveCustomer}>Archive customer</button>
+        <div className="context-danger">
+          <button type="button" className="remove-customer archive-customer" onClick={onArchiveCustomer}>Archive customer</button>
+          <button type="button" className="remove-customer delete-customer" onClick={onDeleteCustomer}>Delete customer</button>
+        </div>
       </aside>
     </div>
   );
@@ -343,10 +371,23 @@ export function TaskEntry({
     setEditing(false);
   };
 
+  const startEditing = () => {
+    setTitle(task.title);
+    setDescription(task.description ?? '');
+    setDue(task.due ?? '');
+    setEditing(true);
+  };
+
+  const dirty = title !== task.title || description !== (task.description ?? '') || due !== (task.due ?? '');
+  const cancelEdit = () => {
+    if (dirty && !window.confirm('Discard unsaved changes to this task?')) return;
+    setEditing(false);
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     if (event.key === 'Escape') {
       event.stopPropagation();
-      setEditing(false);
+      cancelEdit();
     }
   };
 
@@ -356,7 +397,7 @@ export function TaskEntry({
         {task.due ? (
           <>
             <strong>{formatDueLong(task.due)}</strong>
-            <span>{overdue ? relativeDue(task.due) : task.status === 'done' ? 'Closed' : relativeDue(task.due)}</span>
+            <span>{overdue ? relativeDue(task.due) : task.status === 'done' ? 'Completed' : relativeDue(task.due)}</span>
           </>
         ) : (
           <><strong>No due date</strong><span>Unscheduled</span></>
@@ -369,7 +410,7 @@ export function TaskEntry({
             <textarea className="crm-field" aria-label="Task description" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} onKeyDown={onKeyDown} placeholder="Add details and next steps" />
             <div className="editor-actions">
               <label className="date-control"><span>Due date</span><input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
-              <button type="button" className="crm-secondary" onClick={() => setEditing(false)}>Cancel</button>
+              <button type="button" className="crm-secondary" onClick={cancelEdit}>Cancel</button>
               <button type="button" className="crm-primary small-primary" onClick={save}>Save</button>
             </div>
           </div>
@@ -387,22 +428,19 @@ export function TaskEntry({
             <p className={`task-description${task.description ? '' : ' is-blank'}${hasLongDescription && !descriptionExpanded ? ' is-collapsed' : ''}`}>
               {task.description || 'No description yet. Add the details needed to move this forward.'}
             </p>
-            {hasLongDescription && (
-              <button
-                type="button"
-                className="task-expand"
-                aria-expanded={descriptionExpanded}
-                onClick={() => setDescriptionExpanded((expanded) => !expanded)}
-              >
-                {descriptionExpanded ? 'Read less' : 'Read more'}
-              </button>
-            )}
-            <button type="button" className="task-edit-link" onClick={() => {
-              setTitle(task.title);
-              setDescription(task.description ?? '');
-              setDue(task.due ?? '');
-              setEditing(true);
-            }}>Edit task</button>
+            <div className="task-links">
+              {hasLongDescription && (
+                <button
+                  type="button"
+                  className="task-expand"
+                  aria-expanded={descriptionExpanded}
+                  onClick={() => setDescriptionExpanded((expanded) => !expanded)}
+                >
+                  {descriptionExpanded ? 'Read less' : 'Read more'}
+                </button>
+              )}
+              <button type="button" className="task-edit-link" onClick={startEditing}>Edit task</button>
+            </div>
           </>
         )}
       </div>

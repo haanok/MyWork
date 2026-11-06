@@ -61,7 +61,6 @@ services:
       OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: ${ALLOW_UNVERIFIED_EMAIL:-false}
       # /mcp and /.well-known/ (OAuth metadata; other paths there give 404) authenticate with Claude's own bearer token,
       # which the app verifies; they must not get the cookie login redirect.
-      # (If /api/obsidian/ is implemented again, add ^/api/obsidian/ here.)
       OAUTH2_PROXY_SKIP_AUTH_ROUTES: ^/mcp$$,^/\.well-known/
       # By default oauth2-proxy strips the Authorization header (because it
       # sets it itself), which would also drop Claude's token on the routes

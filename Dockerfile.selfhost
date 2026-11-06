@@ -4,7 +4,6 @@
 
 FROM node:24-alpine AS build
 WORKDIR /app
-ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY index.html tsconfig.json vite.config.ts ./

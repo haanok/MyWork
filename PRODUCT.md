@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Vite + React + TypeScript frontend served by a self-hosted Node server (`server/`) behind oauth2-proxy and Pocket ID. The server implements `/api/data` and stores each signed-in user's data as a JSON file keyed by their Pocket ID `sub`; it can also expose a remote MCP endpoint for Claude. Local Vite development uses localStorage; the packaged Mac app uses an Obsidian vault.
+Vite + React + TypeScript frontend served by a self-hosted Node server (`server/`) behind oauth2-proxy and Pocket ID. The server implements `/api/data` and stores each signed-in user's data as a JSON file keyed by their Pocket ID `sub`; it can also expose a remote MCP endpoint for Claude. Local Vite development uses localStorage.
 
 ## Users
 
@@ -32,8 +32,7 @@ Frequent context switching during a workday. Quick capture while on calls or bet
 - Customer context holds notes, contacts, status, and a task ledger with titles, descriptions, due dates, priority, and status.
 - Production web persistence uses the same-origin `/api/data` on the self-hosted server, with per-user JSON files; localStorage is only the Vite development adapter.
 - The server verifies the Pocket ID token on every request; saves are conditional on the ETag, and conflicting edits (another tab, or Claude via MCP) are merged per customer and task.
-- The Mac app persists to Obsidian Markdown; it does not use the server.
-- JSON export/import, Obsidian Markdown folder import, and customer search are implemented. A quick-add box (⌘K / Ctrl+K) captures a task for any customer from anywhere in the app. Time tracking and due-date reminders remain undecided.
+- JSON export/import and customer search are implemented. A quick-add box (⌘K / Ctrl+K) captures a task for any customer from anywhere in the app. Time tracking and due-date reminders remain undecided.
 
 ## Evidence on Hand
 
@@ -44,7 +43,7 @@ No real customers or data. Demo data must be labelled synthetic.
 - One click from the map into any customer's context.
 - Capture is faster than thinking about where to put it.
 - The map must stay legible with many customers.
-- Web records are scoped to the authenticated user; the Mac app keeps its records in the user's selected Obsidian vault.
+- Web records are scoped to the authenticated user.
 
 ## Accessibility & Inclusion
 

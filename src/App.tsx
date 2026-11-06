@@ -3,15 +3,14 @@ import { CustomerWorkspace } from './CustomerWorkspace';
 import { DriftSurface } from './DriftSurface';
 import { today } from './dates';
 import { fetchMcpInfo, type McpInfo } from './api';
-import { IconArrowLeft, IconCalendar, IconDownload, IconFolderOpen, IconPlug, IconPlus, IconSearch, IconTransfer, IconUpload } from './icons';
+import { IconArrowLeft, IconCalendar, IconDownload, IconPlug, IconPlus, IconSearch, IconTransfer, IconUpload } from './icons';
 import { McpConnectDialog } from './McpConnect';
 import { OrbMap } from './OrbMap';
 import { TodayView } from './TodayView';
 import { isMac, QUICK_ADD_KEYS, QuickAddDialog } from './QuickAdd';
 import { rankCustomers } from './quickAddParse';
-import { prepareMarkdownImport, type MarkdownImportPreview } from './obsidianImport';
 import { sampleData } from './sample';
-import { localStorageAdapter, obsidianStorageAdapter, parseImport, serverStorageAdapter } from './storage';
+import { localStorageAdapter, parseImport, serverStorageAdapter } from './storage';
 import { useBoard } from './store';
 import type { Task } from './types';
 
@@ -29,6 +28,7 @@ function useCompact() {
 
 const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
 type HomeTheme = 'spacewave' | 'drift';
+type View = 'map' | 'today';
 
 function savedHomeTheme(): HomeTheme {
   try {
@@ -38,24 +38,33 @@ function savedHomeTheme(): HomeTheme {
   }
 }
 
+function routeFromHash(): { view: View; selectedId: string | null } {
+  const match = /^#\/(map|today)(?:\/customer\/(.+))?$/.exec(window.location.hash);
+  return {
+    view: match?.[1] === 'today' ? 'today' : 'map',
+    selectedId: match?.[2] ? decodeURIComponent(match[2]) : null,
+  };
+}
+
+function hashFor(view: View, selectedId: string | null): string {
+  return `#/${view}${selectedId ? `/customer/${encodeURIComponent(selectedId)}` : ''}`;
+}
+
 export default function App() {
-  const desktop = Boolean(window.customerBoard);
-  const adapter = desktop ? obsidianStorageAdapter : import.meta.env.DEV ? localStorageAdapter : serverStorageAdapter;
-  const sourceLabel = desktop ? 'Obsidian vault' : import.meta.env.DEV ? 'Local preview' : 'Server';
+  const adapter = import.meta.env.DEV ? localStorageAdapter : serverStorageAdapter;
+  const sourceLabel = import.meta.env.DEV ? 'Local preview' : 'Server';
   const { data, ready, undo, loadFailed, storageError, actions, hasUnsavedChanges } = useBoard(adapter);
   const compact = useCompact();
   const [homeTheme, setHomeTheme] = useState<HomeTheme>(savedHomeTheme);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<'map' | 'today'>('map');
+  const [initialRoute] = useState(routeFromHash);
+  const [selectedId, setSelectedId] = useState<string | null>(initialRoute.selectedId);
+  const [view, setView] = useState<View>(initialRoute.view);
+  const routeReady = useRef(false);
   const [justAdded, setJustAdded] = useState<string | null>(null);
-  const [vaultRoot, setVaultRoot] = useState<string | null | undefined>(() => desktop ? undefined : null);
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const markdownFileRef = useRef<HTMLInputElement>(null);
-  const importDialogRef = useRef<HTMLDialogElement>(null);
-  const [pendingMarkdownImport, setPendingMarkdownImport] = useState<MarkdownImportPreview | null>(null);
   const [mcpInfo, setMcpInfo] = useState<McpInfo | null>(null);
   const [showMcp, setShowMcp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -72,7 +81,6 @@ export default function App() {
   }, [homeTheme]);
 
   useEffect(() => {
-    if (desktop) return;
     if (import.meta.env.DEV) {
       setMcpInfo({ enabled: true, url: 'https://mywork.example.com/mcp', clientId: 'example-client-id', issuer: 'https://id.example.com' });
       return;
@@ -80,32 +88,29 @@ export default function App() {
     let active = true;
     void fetchMcpInfo().then((info) => { if (active) setMcpInfo(info); });
     return () => { active = false; };
-  }, [desktop]);
-
-  useEffect(() => {
-    if (!desktop) return;
-    let active = true;
-    void obsidianStorageAdapter.getCustomerRoot().then((root) => {
-      if (active) setVaultRoot(root);
-    }).catch((error: unknown) => {
-      if (active) setNotice(error instanceof Error ? error.message : 'Could not read the selected folder.');
-      if (active) setVaultRoot(null);
-    });
-    return () => {
-      active = false;
-    };
-  }, [desktop]);
-
-  useEffect(() => {
-    if (!desktop) return;
-    return obsidianStorageAdapter.onVaultChanged(() => {
-      void obsidianStorageAdapter.load().then((next) => actions.replace(next, true)).catch((error: unknown) => {
-        setNotice(error instanceof Error ? error.message : 'Could not reload the Obsidian folder.');
-      });
-    });
-  }, [desktop, actions]);
+  }, []);
 
   const selected = data.customers.find((c) => c.id === selectedId) ?? null;
+
+  // Keep the view and open customer in the URL so the browser back and forward buttons work.
+  useEffect(() => {
+    const onPopState = () => {
+      const route = routeFromHash();
+      setView(route.view);
+      setSelectedId(route.selectedId);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    const hash = hashFor(view, selectedId);
+    if (window.location.hash !== hash) {
+      if (routeReady.current) window.history.pushState(null, '', hash);
+      else window.history.replaceState(null, '', hash);
+    }
+    routeReady.current = true;
+  }, [view, selectedId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -141,11 +146,8 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey);
   }, [data.customers.length]);
 
-  // In the browser, warn before leaving while a change is not yet saved (for
-  // example when the server could not be reached). The desktop app writes to
-  // the vault right away and would only block closing the window.
+  // Warn before leaving while a change is not yet saved, for example when the server could not be reached.
   useEffect(() => {
-    if (desktop) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!hasUnsavedChanges()) return;
       e.preventDefault();
@@ -153,7 +155,7 @@ export default function App() {
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [desktop, hasUnsavedChanges]);
+  }, [hasUnsavedChanges]);
 
   // Close the import/export menu on an outside click or Escape.
   useEffect(() => {
@@ -181,11 +183,6 @@ export default function App() {
   useEffect(() => {
     if (storageError) setNotice(storageError);
   }, [storageError]);
-
-  useEffect(() => {
-    const dialog = importDialogRef.current;
-    if (pendingMarkdownImport && dialog && !dialog.open) dialog.showModal();
-  }, [pendingMarkdownImport]);
 
   const visible = useMemo(
     () => data.customers.filter((c) => showArchived || c.status !== 'archived' || c.id === selectedId),
@@ -230,17 +227,6 @@ export default function App() {
     setJustAdded(id);
   };
 
-  const connectVault = async () => {
-    try {
-      const root = await obsidianStorageAdapter.chooseCustomerRoot();
-      if (!root) return;
-      setVaultRoot(root);
-      actions.replace(await obsidianStorageAdapter.load(), true);
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Could not connect to that folder.');
-    }
-  };
-
   const advanceTask = (t: Task) => actions.updateTask(t.id, { status: NEXT_STATUS[t.status] });
 
   const exportJson = () => {
@@ -264,36 +250,7 @@ export default function App() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const chooseMarkdownFolder = () => {
-    const input = markdownFileRef.current;
-    if (!input) return;
-    input.setAttribute('webkitdirectory', '');
-    input.click();
-  };
-
-  const importMarkdownFiles = async (files: File[]) => {
-    if (files.length === 0) return;
-    try {
-      setPendingMarkdownImport(await prepareMarkdownImport(files, data));
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Could not read the selected Obsidian folder.');
-    }
-  };
-
-  const confirmMarkdownImport = () => {
-    if (!pendingMarkdownImport) return;
-    const { data: imported, addedCustomers, updatedCustomers, addedTasks, updatedTasks } = pendingMarkdownImport;
-    actions.importData(imported);
-    closeMarkdownImport();
-    setNotice(`Imported ${addedCustomers} new customers, updated ${updatedCustomers}, added ${addedTasks} tasks, and updated ${updatedTasks}. Existing unmatched records were kept.`);
-  };
-
-  const closeMarkdownImport = () => {
-    if (importDialogRef.current?.open) importDialogRef.current.close();
-    setPendingMarkdownImport(null);
-  };
-
-  if (!ready || (desktop && vaultRoot === undefined)) return null;
+  if (!ready) return null;
 
   if (loadFailed) {
     return (
@@ -309,24 +266,6 @@ export default function App() {
     );
   }
 
-  if (desktop && !vaultRoot) {
-    return (
-      <div className="app">
-        <header className="deck">
-          <h1 className="wordmark">MyWork</h1>
-        </header>
-        <main className="vault-setup">
-          <div className="vault-setup-content">
-            <h2>Connect your customer folder</h2>
-            <p>Choose the folder whose immediate subfolders are customers. Markdown notes inside each customer folder become tasks.</p>
-            <button type="button" className="crm-primary" onClick={() => void connectVault()}>Choose folder</button>
-            {storageError && <p className="vault-error" role="alert">{storageError}</p>}
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="app" data-home-theme={homeTheme}>
       <header className={`deck${selected ? ' deck-record' : ''}`}>
@@ -336,7 +275,19 @@ export default function App() {
             {view === 'today' ? 'Today' : 'Map'}
           </button>
         )}
-        <h1 className="wordmark">MyWork</h1>
+        <h1 className="wordmark">
+          <button
+            type="button"
+            className="wordmark-home"
+            aria-label="Go to home page"
+            onClick={() => {
+              setView('map');
+              setSelectedId(null);
+            }}
+          >
+            MyWork
+          </button>
+        </h1>
 
         {!selected && <p className="tally" role="status">
           <span className="tally-item">
@@ -353,11 +304,6 @@ export default function App() {
         </p>}
 
         <div className="deck-tools">
-          {desktop && (
-            <button type="button" className="key vault-key" onClick={() => void connectVault()} title={vaultRoot ?? 'Choose a customer folder'}>
-              Obsidian · {vaultRoot?.split('/').filter(Boolean).at(-1) ?? 'Choose folder'}
-            </button>
-          )}
           <label className="search">
             <IconSearch width={16} height={16} />
             <span className="visually-hidden">Find a customer</span>
@@ -436,60 +382,38 @@ export default function App() {
               <IconPlug />
             </button>
           )}
-          {desktop ? (
-            <button type="button" className="icon-key" onClick={exportJson} aria-label="Export board as JSON" title="Export JSON">
-              <IconDownload />
+          <div className="data-menu" ref={dataMenuRef}>
+            <button
+              type="button"
+              className="icon-key data-menu-key"
+              aria-label="Import or export"
+              title="Import / export"
+              aria-haspopup="menu"
+              aria-expanded={dataMenuOpen}
+              onClick={() => setDataMenuOpen((open) => !open)}
+            >
+              <IconTransfer />
             </button>
-          ) : (
-            <div className="data-menu" ref={dataMenuRef}>
-              <button
-                type="button"
-                className="icon-key data-menu-key"
-                aria-label="Import or export"
-                title="Import / export"
-                aria-haspopup="menu"
-                aria-expanded={dataMenuOpen}
-                onClick={() => setDataMenuOpen((open) => !open)}
-              >
-                <IconTransfer />
-              </button>
-              {dataMenuOpen && (
-                <div className="data-menu-list" role="menu">
-                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); exportJson(); }}>
-                    <IconDownload width={16} height={16} />
-                    Export JSON
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); fileRef.current?.click(); }}>
-                    <IconUpload width={16} height={16} />
-                    Import JSON…
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); chooseMarkdownFolder(); }}>
-                    <IconFolderOpen width={16} height={16} />
-                    Import Obsidian folder…
-                  </button>
-                </div>
-              )}
-              <input
-                ref={markdownFileRef}
-                type="file"
-                accept=".md,text/markdown"
-                multiple
-                hidden
-                onChange={(event) => {
-                  const files = Array.from(event.currentTarget.files ?? []);
-                  event.currentTarget.value = '';
-                  void importMarkdownFiles(files);
-                }}
-              />
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/json,.json"
-                hidden
-                onChange={(e) => void importJson(e.target.files?.[0])}
-              />
-            </div>
-          )}
+            {dataMenuOpen && (
+              <div className="data-menu-list" role="menu">
+                <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); exportJson(); }}>
+                  <IconDownload width={16} height={16} />
+                  Export JSON
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); fileRef.current?.click(); }}>
+                  <IconUpload width={16} height={16} />
+                  Import JSON…
+                </button>
+              </div>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={(e) => void importJson(e.target.files?.[0])}
+            />
+          </div>
           {!selected && (
             <button type="button" className="key primary" onClick={addCustomer}>
               <IconPlus width={16} height={16} />
@@ -519,6 +443,13 @@ export default function App() {
               actions.updateCustomer(selected.id, { status: 'archived' });
               setSelectedId(null);
             }}
+            onDeleteCustomer={() => {
+              const taskCount = data.tasks.filter((t) => t.customerId === selected.id).length;
+              const taskLabel = taskCount === 1 ? 'task' : 'tasks';
+              if (!window.confirm(`Delete ${selected.name} and ${taskCount} ${taskLabel}? You can undo this right after.`)) return;
+              actions.removeCustomer(selected.id);
+              setSelectedId(null);
+            }}
             onAddTask={(title, description, priority, due) => actions.addTask(selected.id, title, description, priority, due)}
             onUpdateTask={actions.updateTask}
             onRemoveTask={actions.removeTask}
@@ -542,7 +473,7 @@ export default function App() {
             onSelect={setSelectedId}
             onAdvanceTask={advanceTask}
             onAddCustomer={addCustomer}
-            onLoadSample={desktop ? undefined : () => actions.replace(sampleData())}
+            onLoadSample={() => actions.replace(sampleData())}
           />
         )}
       </main>
@@ -577,38 +508,6 @@ export default function App() {
 
       {showMcp && mcpInfo?.enabled && <McpConnectDialog info={mcpInfo} onClose={() => setShowMcp(false)} />}
 
-      <dialog
-        ref={importDialogRef}
-        className="import-dialog"
-        aria-labelledby="import-dialog-title"
-        onCancel={closeMarkdownImport}
-        onClose={() => setPendingMarkdownImport(null)}
-      >
-        {pendingMarkdownImport && (
-          <>
-            <h2 id="import-dialog-title">Import Obsidian notes?</h2>
-            <p>
-              {pendingMarkdownImport.addedCustomers + pendingMarkdownImport.updatedCustomers}{' '}
-              {pendingMarkdownImport.addedCustomers + pendingMarkdownImport.updatedCustomers === 1 ? 'customer' : 'customers'} and{' '}
-              {pendingMarkdownImport.addedTasks + pendingMarkdownImport.updatedTasks}{' '}
-              {pendingMarkdownImport.addedTasks + pendingMarkdownImport.updatedTasks === 1 ? 'task note' : 'task notes'} found.
-            </p>
-            <ul className="import-summary">
-              <li>{pendingMarkdownImport.addedCustomers} new {pendingMarkdownImport.addedCustomers === 1 ? 'customer' : 'customers'}</li>
-              <li>{pendingMarkdownImport.updatedCustomers} matching {pendingMarkdownImport.updatedCustomers === 1 ? 'customer' : 'customers'} updated</li>
-              <li>{pendingMarkdownImport.addedTasks} new {pendingMarkdownImport.addedTasks === 1 ? 'task' : 'tasks'}</li>
-              <li>{pendingMarkdownImport.updatedTasks} matching {pendingMarkdownImport.updatedTasks === 1 ? 'task' : 'tasks'} updated</li>
-            </ul>
-            <p className="import-preservation">
-              Matching notes update by stable ID. Existing records absent from this folder are retained; nothing is deleted.
-            </p>
-            <div className="import-actions">
-              <button type="button" className="crm-secondary" onClick={closeMarkdownImport}>Cancel</button>
-              <button type="button" className="crm-primary" onClick={confirmMarkdownImport}>Merge into board</button>
-            </div>
-          </>
-        )}
-      </dialog>
     </div>
   );
 }

@@ -108,8 +108,19 @@ button {
   letter-spacing: 0;
 }
 
-.deck-record .wordmark {
-  display: none;
+.wordmark-home {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.wordmark-home:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
 }
 
 .back-key,
@@ -336,14 +347,6 @@ button {
   color: var(--space-pink);
 }
 
-.vault-key {
-  max-width: 235px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.8rem;
-}
-
 .map {
   position: relative;
   flex: 1;
@@ -440,7 +443,6 @@ button {
 .app[data-home-theme='drift'] .task-composer {
   border-color: rgb(255 255 255 / 17%);
   background: rgb(255 255 255 / 5%);
-  backdrop-filter: blur(18px) saturate(1.15);
 }
 
 .app[data-home-theme='drift'] .crm-field,
@@ -517,13 +519,36 @@ button {
   border-color: rgb(255 255 255 / 35%);
 }
 
+@property --glass-x {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 15%;
+}
+
+@property --glass-y {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 0%;
+}
+
 .app[data-home-theme='drift'] .context-rail {
-  border: 1px solid transparent;
+  border-color: rgb(255 255 255 / 12%);
   background:
-    radial-gradient(ellipse at var(--glass-x, 15%) var(--glass-y, 0%), rgb(255 255 255 / 9%), transparent 65%) padding-box,
-    linear-gradient(145deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2%) 72%) padding-box,
-    linear-gradient(135deg, rgb(168 139 255 / 55%), rgb(111 140 255 / 40%) 48%, rgb(117 223 241 / 55%)) border-box;
-  box-shadow: 0 18px 48px -20px rgb(0 0 0 / 90%), 0 0 32px -18px rgb(111 140 255 / 35%), inset 0 1px rgb(255 255 255 / 7%);
+    radial-gradient(ellipse at var(--glass-x, 15%) var(--glass-y, 0%), rgb(255 255 255 / 9%), transparent 65%),
+    linear-gradient(145deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2%) 72%);
+  box-shadow: 0 18px 48px -20px rgb(0 0 0 / 90%), inset 0 1px rgb(255 255 255 / 7%);
+}
+
+.app[data-home-theme='drift'] :is(.customer-rail, .context-rail, .import-dialog, .quick-add-dialog, .mcp-dialog) {
+  transition: --glass-x 260ms ease-out, --glass-y 260ms ease-out, border-color 220ms ease-out;
+}
+
+.app[data-home-theme='drift'] .task-entry {
+  border-bottom-color: rgb(255 255 255 / 10%);
+}
+
+.app[data-home-theme='drift'] .task-entry:hover {
+  background: rgb(255 255 255 / 3%);
 }
 
 .app[data-home-theme='drift'] .data-menu-list {
@@ -1102,6 +1127,10 @@ button {
   color: var(--space-pink);
 }
 
+.mobile-log-task {
+  display: none;
+}
+
 .task-composer {
   display: flex;
   flex-direction: column;
@@ -1344,7 +1373,7 @@ button {
 }
 
 .task-expand {
-  margin-top: 5px;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -1356,7 +1385,7 @@ button {
 }
 
 .task-edit-link {
-  margin-top: 7px;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -1366,10 +1395,18 @@ button {
   text-underline-offset: 3px;
 }
 
+.task-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin-top: 7px;
+}
+
 .task-controls {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 6px;
 }
 
 .task-status-select {
@@ -1564,8 +1601,18 @@ button {
   font-size: 0.8rem;
 }
 
+.context-danger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--space-line);
+}
+
 .remove-customer {
-  margin-top: 17px;
+  margin: 0;
   padding: 5px 0;
   border: 0;
   background: transparent;
@@ -1573,6 +1620,10 @@ button {
   font-size: 0.78rem;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.remove-customer.archive-customer {
+  color: var(--space-muted);
 }
 
 .toast {
@@ -1857,10 +1908,6 @@ button {
     display: none;
   }
 
-  .deck-record .wordmark {
-    display: block;
-  }
-
   .deck-record .back-key {
     min-height: 34px;
     padding-inline: 5px;
@@ -2066,6 +2113,23 @@ button {
   .customer-notes {
     min-height: 84px;
   }
+
+  .record-head { order: 0; }
+  .queue-summary { order: 1; }
+  .task-queue-head { order: 2; }
+  .task-list { order: 3; }
+  .task-composer { order: 5; }
+  .task-composer:not(.is-open) {
+    display: none;
+  }
+
+  .mobile-log-task {
+    display: flex;
+    order: 4;
+    justify-content: center;
+    width: 100%;
+    margin-top: 8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2265,9 +2329,15 @@ kbd {
   outline-offset: 1px;
 }
 
+.short-name-hint {
+  color: var(--space-quiet);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 .short-name-taken {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 18px);
   right: 0;
   color: var(--space-coral);
   font-size: 0.72rem;
