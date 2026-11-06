@@ -94,3 +94,10 @@ export const IconTransfer = (p: SVGProps<SVGSVGElement>) => (
     <path d="M8 18.5V5M4.5 8.5L8 5l3.5 3.5M16 5.5V19M12.5 15.5L16 19l3.5-3.5" />
   </svg>
 );
+
+export const IconCalendar = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+    <path d="M3.5 10h17M8 3v4M16 3v4" />
+  </svg>
+);

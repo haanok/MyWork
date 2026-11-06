@@ -2035,3 +2035,125 @@ kbd {
     display: grid;
   }
 }
+
+/* Today view: overdue and due-today tasks across all customers */
+.today-key[aria-pressed='true'] {
+  border-color: var(--space-cyan);
+  background: #12304a;
+  color: var(--space-fg);
+}
+
+.today-key svg {
+  color: var(--space-cyan);
+}
+
+.today-key-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: #263452;
+  color: var(--space-fg);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.today-key-count.is-alert {
+  background: var(--space-pink);
+  color: #1a0712;
+}
+
+.today-view {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  justify-content: center;
+  background: var(--space-base);
+}
+
+.today-main {
+  width: min(100%, 920px);
+}
+
+.today-section .task-queue-head {
+  min-height: 44px;
+}
+
+.today-section .task-queue-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.today-count {
+  color: var(--space-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-section.is-alert .task-queue-head h3,
+.today-section.is-alert .today-count {
+  color: var(--space-pink);
+}
+
+.today-section.is-quiet .task-queue-head h3 {
+  color: var(--space-muted);
+}
+
+.task-customer {
+  padding: 1px 8px;
+  border: 1px solid #36507a;
+  border-radius: 10px;
+  background: #13213d;
+  color: var(--space-cyan);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.task-customer:hover {
+  border-color: var(--space-cyan);
+  background: #183150;
+}
+
+.empty-mark.is-clear {
+  border-color: #3f7f6e;
+  color: var(--space-green);
+}
+
+@media (max-width: 680px) {
+  .today-main {
+    padding-inline: 14px;
+  }
+
+  .today-key {
+    min-height: 35px;
+    padding-inline: 9px;
+    font-size: 0.78rem;
+  }
+
+  .today-key svg {
+    display: none;
+  }
+}
+
+/* Keep the toolbar on one line now that it also holds the Today key. */
+.tally {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 1240px) {
+  .tally-item:not(:first-child) {
+    display: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .tally,
+  .quick-add-key kbd {
+    display: none;
+  }
+}

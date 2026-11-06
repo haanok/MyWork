@@ -314,14 +314,19 @@ export function CustomerWorkspace({
   );
 }
 
-function TaskEntry({
+export function TaskEntry({
   task,
   onUpdate,
   onRemove,
+  customer,
+  onOpenCustomer,
 }: {
   task: Task;
   onUpdate: (id: string, patch: Partial<Task>) => void;
   onRemove: (id: string) => void;
+  /** Shown as a link to the customer in cross-customer views. */
+  customer?: Customer;
+  onOpenCustomer?: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -372,6 +377,11 @@ function TaskEntry({
           <>
             <div className="task-title-line">
               <h4>{task.title}</h4>
+              {customer && (
+                <button type="button" className="task-customer" onClick={() => onOpenCustomer?.(customer.id)} title={`Open ${customer.name || 'customer'}`}>
+                  {customer.name || 'Untitled customer'}
+                </button>
+              )}
               {task.priority === 'high' && <span className="priority-mark"><IconFlag width={13} height={13} /> High</span>}
             </div>
             <p className={`task-description${task.description ? '' : ' is-blank'}${hasLongDescription && !descriptionExpanded ? ' is-collapsed' : ''}`}>

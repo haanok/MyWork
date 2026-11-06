@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerWorkspace } from './CustomerWorkspace';
 import { today } from './dates';
 import { fetchMcpInfo, type McpInfo } from './api';
-import { IconArrowLeft, IconDownload, IconFolderOpen, IconPlug, IconPlus, IconSearch, IconTransfer, IconUpload } from './icons';
+import { IconArrowLeft, IconCalendar, IconDownload, IconFolderOpen, IconPlug, IconPlus, IconSearch, IconTransfer, IconUpload } from './icons';
 import { McpConnectDialog } from './McpConnect';
 import { OrbMap } from './OrbMap';
+import { TodayView } from './TodayView';
 import { isMac, QUICK_ADD_KEYS, QuickAddDialog } from './QuickAdd';
 import { rankCustomers } from './quickAddParse';
 import { prepareMarkdownImport, type MarkdownImportPreview } from './obsidianImport';
@@ -34,6 +35,7 @@ export default function App() {
   const { data, ready, undo, loadFailed, storageError, actions, hasUnsavedChanges } = useBoard(adapter);
   const compact = useCompact();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<'map' | 'today'>('map');
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const [vaultRoot, setVaultRoot] = useState<string | null | undefined>(() => desktop ? undefined : null);
   const [query, setQuery] = useState('');
@@ -88,14 +90,16 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || !selectedId) return;
+      if (e.key !== 'Escape' || (!selectedId && view === 'map')) return;
       const el = e.target as HTMLElement;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
-      setSelectedId(null);
+      if (document.querySelector('dialog[open]')) return;
+      if (selectedId) setSelectedId(null);
+      else setView('map');
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [selectedId]);
+  }, [selectedId, view]);
 
   // ⌘K / Ctrl+K opens quick add and ⌘F / Ctrl+F jumps to the customer
   // search, from anywhere, also while typing in a field.
@@ -174,12 +178,14 @@ export default function App() {
     const t0 = today();
     let open = 0;
     let overdue = 0;
+    let dueToday = 0;
     for (const t of data.tasks) {
       if (t.status === 'done' || !live.has(t.customerId)) continue;
       open += 1;
       if (t.due && t.due < t0) overdue += 1;
+      else if (t.due === t0) dueToday += 1;
     }
-    return { customers: live.size, open, overdue };
+    return { customers: live.size, open, overdue, dueToday };
   }, [data]);
 
   // In a customer's workspace the search narrows the customer list.
@@ -308,7 +314,7 @@ export default function App() {
         {selected && (
           <button type="button" className="back-key" onClick={() => setSelectedId(null)}>
             <IconArrowLeft width={17} height={17} />
-            Map
+            {view === 'today' ? 'Today' : 'Map'}
           </button>
         )}
         <h1 className="wordmark">MyWork</h1>
@@ -355,7 +361,22 @@ export default function App() {
             />
             {!query && <kbd className="search-kbd" aria-hidden="true">{isMac ? '⌘F' : 'Ctrl+F'}</kbd>}
           </label>
-          {!selected && archivedCount > 0 && (
+          {!selected && (
+            <button
+              type="button"
+              className="key today-key"
+              aria-pressed={view === 'today'}
+              onClick={() => setView((v) => (v === 'today' ? 'map' : 'today'))}
+              title="Overdue and due-today tasks across all customers"
+            >
+              <IconCalendar width={15} height={15} />
+              Today
+              {tally.overdue + tally.dueToday > 0 && (
+                <span className={`num today-key-count${tally.overdue > 0 ? ' is-alert' : ''}`}>{tally.overdue + tally.dueToday}</span>
+              )}
+            </button>
+          )}
+          {!selected && view === 'map' && archivedCount > 0 && (
             <button
               type="button"
               className="key"
@@ -461,6 +482,14 @@ export default function App() {
               setSelectedId(null);
             }}
             onAddTask={(title, description, priority, due) => actions.addTask(selected.id, title, description, priority, due)}
+            onUpdateTask={actions.updateTask}
+            onRemoveTask={actions.removeTask}
+          />
+        ) : view === 'today' ? (
+          <TodayView
+            customers={data.customers}
+            tasks={data.tasks}
+            onOpenCustomer={setSelectedId}
             onUpdateTask={actions.updateTask}
             onRemoveTask={actions.removeTask}
           />
