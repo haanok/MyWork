@@ -202,6 +202,25 @@ button {
   margin-left: auto;
 }
 
+.theme-control {
+  display: flex;
+}
+
+.theme-key {
+  min-width: 108px;
+  padding-right: 28px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23a4afcf' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+
+.theme-key option {
+  background: var(--space-panel);
+  color: var(--space-fg);
+}
+
 .search {
   display: flex;
   width: min(250px, 24vw);
@@ -337,6 +356,291 @@ button {
     radial-gradient(circle, rgb(180 204 255 / 22%) 0 1px, transparent 1.5px);
   background-size: auto, auto, 47px 47px;
   background-position: center, center, 18px 13px;
+}
+
+.app[data-home-theme='drift'] {
+  --space-void: #050505;
+  --space-base: #090a0b;
+  --space-panel: #111213;
+  --space-raised: #1b1c1e;
+  --space-high: #252628;
+  --space-line: rgb(255 255 255 / 13%);
+  --space-fg: #f4f4f5;
+  --space-muted: #c1c2c4;
+  --space-quiet: #999a9c;
+  --space-cyan: #f4f4f5;
+  --space-blue: #d4d5d7;
+  --space-pink: #f0d7dc;
+  --space-coral: #f0d7dc;
+  --space-green: #d8e6dc;
+  background: #050505;
+}
+
+.app[data-home-theme='drift'] .deck {
+  border-color: rgb(255 255 255 / 12%);
+  background: rgb(12 12 13 / 86%);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+.app[data-home-theme='drift'] .search,
+.app[data-home-theme='drift'] .key,
+.app[data-home-theme='drift'] .icon-key {
+  border-color: rgb(255 255 255 / 13%);
+  background-color: rgb(255 255 255 / 4%);
+}
+
+.app[data-home-theme='drift'] .icon-key:hover,
+.app[data-home-theme='drift'] .key:hover,
+.app[data-home-theme='drift'] .today-key[aria-pressed='true'] {
+  border-color: rgb(255 255 255 / 30%);
+  background-color: rgb(255 255 255 / 9%);
+}
+
+.app[data-home-theme='drift'] .crm-workspace {
+  background: #090a0b;
+}
+
+.app[data-home-theme='drift'] .customer-rail,
+.app[data-home-theme='drift'] .context-rail {
+  border-color: rgb(255 255 255 / 12%);
+  background: linear-gradient(145deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2%) 72%);
+  box-shadow: inset 0 1px rgb(255 255 255 / 9%);
+  backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.app[data-home-theme='drift'] .context-section,
+.app[data-home-theme='drift'] .customer-nav-item {
+  border-color: rgb(255 255 255 / 10%);
+}
+
+.app[data-home-theme='drift'] .context-section {
+  background: linear-gradient(100deg, rgb(255 255 255 / 3%), transparent 72%);
+}
+
+.app[data-home-theme='drift'] .customer-nav-item:hover,
+.app[data-home-theme='drift'] .customer-nav-item.is-current {
+  background: rgb(255 255 255 / 7%);
+}
+
+.app[data-home-theme='drift'] .customer-mark,
+.app[data-home-theme='drift'] .record-mark,
+.app[data-home-theme='drift'] .contact-avatar,
+.app[data-home-theme='drift'] .empty-mark {
+  border-color: rgb(255 255 255 / 22%);
+  background: rgb(255 255 255 / 7%);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='drift'] .customer-nav-count {
+  border: 1px solid rgb(255 255 255 / 12%);
+  background: rgb(255 255 255 / 6%);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='drift'] .task-composer {
+  border-color: rgb(255 255 255 / 17%);
+  background: rgb(255 255 255 / 5%);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.app[data-home-theme='drift'] .crm-field,
+.app[data-home-theme='drift'] .short-name-input,
+.app[data-home-theme='drift'] .customer-status-control select,
+.app[data-home-theme='drift'] .task-status-select {
+  border-color: rgb(255 255 255 / 16%);
+  background: rgb(255 255 255 / 5%);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='drift'] .priority-control,
+.app[data-home-theme='drift'] .task-filters {
+  border-color: rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 4%);
+}
+
+.app[data-home-theme='drift'] .priority-control button.is-active,
+.app[data-home-theme='drift'] .task-filters button[aria-pressed='true'] {
+  background: rgb(255 255 255 / 12%);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='drift'] .data-menu-list,
+.app[data-home-theme='drift'] .import-dialog,
+.app[data-home-theme='drift'] .quick-add-dialog,
+.app[data-home-theme='drift'] .mcp-dialog {
+  border-color: rgb(255 255 255 / 16%);
+  background: rgb(20 20 21 / 82%);
+  box-shadow: 0 18px 48px -20px rgb(0 0 0 / 90%), inset 0 1px rgb(255 255 255 / 7%);
+  backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.app[data-home-theme='drift'] .data-menu-list button:hover,
+.app[data-home-theme='drift'] .data-menu-list button:focus-visible {
+  background: rgb(255 255 255 / 9%);
+}
+
+.app[data-home-theme='drift'] .pip {
+  background: #fff;
+}
+
+.app[data-home-theme='drift'] .pip.lamp-overdue {
+  background: #f2a9b8;
+}
+
+.app[data-home-theme='drift'] .pip.lamp-clear {
+  background: #abbcaf;
+}
+
+.stage[data-home-theme='drift'] {
+  position: relative;
+  isolation: isolate;
+  background: #090a0b;
+}
+
+.drift-water {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.stage[data-home-theme='drift'] .map {
+  background: transparent;
+}
+
+.app[data-home-theme='drift'] :is(.customer-rail, .import-dialog, .quick-add-dialog, .mcp-dialog) {
+  background-image: radial-gradient(ellipse at var(--glass-x, 15%) var(--glass-y, 0%), rgb(255 255 255 / 10%), transparent 65%);
+}
+
+.app[data-home-theme='drift'] [data-glass-active] {
+  border-color: rgb(255 255 255 / 35%);
+}
+
+.app[data-home-theme='drift'] .context-rail {
+  border: 1px solid transparent;
+  background:
+    radial-gradient(ellipse at var(--glass-x, 15%) var(--glass-y, 0%), rgb(255 255 255 / 9%), transparent 65%) padding-box,
+    linear-gradient(145deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2%) 72%) padding-box,
+    linear-gradient(135deg, rgb(168 139 255 / 55%), rgb(111 140 255 / 40%) 48%, rgb(117 223 241 / 55%)) border-box;
+  box-shadow: 0 18px 48px -20px rgb(0 0 0 / 90%), 0 0 32px -18px rgb(111 140 255 / 35%), inset 0 1px rgb(255 255 255 / 7%);
+}
+
+.app[data-home-theme='drift'] .data-menu-list {
+  border: 1px solid transparent;
+  background:
+    radial-gradient(ellipse at var(--glass-x, 15%) var(--glass-y, 0%), rgb(255 255 255 / 9%), transparent 65%) padding-box,
+    linear-gradient(rgb(20 20 21 / 84%), rgb(20 20 21 / 84%)) padding-box,
+    linear-gradient(135deg, rgb(168 139 255 / 75%), rgb(111 140 255 / 55%) 48%, rgb(117 223 241 / 75%)) border-box;
+  box-shadow: 0 18px 48px -20px rgb(0 0 0 / 90%), 0 0 36px -14px rgb(111 140 255 / 50%), inset 0 1px rgb(255 255 255 / 7%);
+}
+
+.stage[data-home-theme='drift'] .lamp::before,
+.stage[data-home-theme='drift'] .lamp::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.stage[data-home-theme='drift'] .lamp::before {
+  background: radial-gradient(ellipse at var(--glass-x, 28%) var(--glass-y, 18%), rgb(255 255 255 / 44%), transparent 53%);
+  opacity: 0.6;
+  transition: opacity 180ms ease;
+}
+
+.stage[data-home-theme='drift'] .lamp::after {
+  background: radial-gradient(circle at 30% 18%, rgb(255 255 255 / 22%), transparent 24%);
+  box-shadow: inset 0 -10px 16px -12px rgb(225 244 248 / 40%), inset 0 0 0 1px rgb(255 255 255 / 6%);
+}
+
+.stage[data-home-theme='drift'] .lamp[data-glass-active]::before {
+  opacity: 1;
+}
+
+.stage[data-home-theme='drift'] .lamp > * {
+  position: relative;
+  z-index: 1;
+}
+
+.stage[data-home-theme='drift'] .lamp {
+  border-color: transparent;
+  background: radial-gradient(circle at 32% 24%, rgb(255 255 255 / 17%), rgb(255 255 255 / 5%) 49%, rgb(255 255 255 / 1%) 100%);
+  color: #fff;
+  box-shadow: 0 20px 46px -20px rgb(0 0 0 / 85%), inset 0 1px 0 rgb(255 255 255 / 22%);
+  backdrop-filter: blur(14px) saturate(1.25);
+}
+
+.stage[data-home-theme='drift'] .lamp-open .lamp {
+  border-color: transparent;
+  background: radial-gradient(circle at 32% 24%, rgb(255 255 255 / 21%), rgb(255 255 255 / 7%) 49%, rgb(255 255 255 / 2%) 100%);
+}
+
+.stage[data-home-theme='drift'] .lamp-doing .lamp {
+  border-style: dashed;
+  border-color: rgb(255 255 255 / 38%);
+  background: radial-gradient(circle at 32% 24%, rgb(255 255 255 / 14%), rgb(255 255 255 / 4%) 49%, rgb(255 255 255 / 1%) 100%);
+}
+
+.stage[data-home-theme='drift'] .lamp-overdue .lamp {
+  border-color: transparent;
+  background: radial-gradient(circle at 32% 24%, rgb(242 169 184 / 22%), rgb(242 169 184 / 7%) 49%, rgb(242 169 184 / 2%) 100%);
+  box-shadow: 0 20px 46px -20px rgb(0 0 0 / 85%), 0 0 28px -14px rgb(242 169 184 / 45%), inset 0 0 0 2px rgb(242 169 184 / 24%), inset 0 1px 0 rgb(255 255 255 / 24%);
+}
+
+.stage[data-home-theme='drift'] .lamp-clear .lamp {
+  border-color: transparent;
+  background: radial-gradient(circle at 32% 24%, rgb(255 255 255 / 9%), rgb(255 255 255 / 3%) 53%, transparent 100%);
+  color: rgb(255 255 255 / 72%);
+}
+
+.stage[data-home-theme='drift'] .strip {
+  border-color: rgb(255 255 255 / 18%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 8%);
+  color: #f4f4f5;
+  box-shadow: 0 10px 24px -16px rgb(0 0 0 / 90%), inset 0 1px rgb(255 255 255 / 10%);
+  backdrop-filter: blur(16px) saturate(1.25);
+}
+
+.stage[data-home-theme='drift'] .legend {
+  right: auto;
+  left: 18px;
+  gap: 16px;
+  padding: 9px 14px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 5%);
+  color: #d0d1d2;
+  box-shadow: 0 12px 30px -18px rgb(0 0 0 / 90%), inset 0 1px rgb(255 255 255 / 8%);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.stage[data-home-theme='drift'] .cord-edge {
+  stroke: #090a0b;
+}
+
+.stage[data-home-theme='drift'] .cord-core,
+.stage[data-home-theme='drift'] .cord-plug {
+  stroke: rgb(255 255 255 / 72%);
+}
+
+.stage[data-home-theme='drift'] .cord-plug {
+  fill: #fff;
+}
+
+.stage[data-home-theme='drift'] .socket {
+  border-color: rgb(255 255 255 / 28%);
+  background: rgb(255 255 255 / 6%);
+  color: #f4f4f5;
+  box-shadow: 0 20px 42px -24px rgb(0 0 0 / 90%), inset 0 1px rgb(255 255 255 / 12%);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.stage[data-home-theme='drift'] .socket:hover {
+  border-color: rgb(255 255 255 / 55%);
+  background: rgb(255 255 255 / 11%);
 }
 
 .orb {
@@ -1536,6 +1840,13 @@ button {
     min-height: 35px;
     padding-inline: 9px;
     font-size: 0.78rem;
+  }
+
+  .theme-key {
+    min-width: 96px;
+    min-height: 35px;
+    padding-inline: 8px 25px;
+    font-size: 0.76rem;
   }
 
   .deck-tools > .key.primary svg {

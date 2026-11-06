@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerWorkspace } from './CustomerWorkspace';
+import { DriftSurface } from './DriftSurface';
 import { today } from './dates';
 import { fetchMcpInfo, type McpInfo } from './api';
 import { IconArrowLeft, IconCalendar, IconDownload, IconFolderOpen, IconPlug, IconPlus, IconSearch, IconTransfer, IconUpload } from './icons';
@@ -27,6 +28,15 @@ function useCompact() {
 }
 
 const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
+type HomeTheme = 'spacewave' | 'drift';
+
+function savedHomeTheme(): HomeTheme {
+  try {
+    return window.localStorage.getItem('mywork-home-theme') === 'drift' ? 'drift' : 'spacewave';
+  } catch {
+    return 'spacewave';
+  }
+}
 
 export default function App() {
   const desktop = Boolean(window.customerBoard);
@@ -34,6 +44,7 @@ export default function App() {
   const sourceLabel = desktop ? 'Obsidian vault' : import.meta.env.DEV ? 'Local preview' : 'Server';
   const { data, ready, undo, loadFailed, storageError, actions, hasUnsavedChanges } = useBoard(adapter);
   const compact = useCompact();
+  const [homeTheme, setHomeTheme] = useState<HomeTheme>(savedHomeTheme);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<'map' | 'today'>('map');
   const [justAdded, setJustAdded] = useState<string | null>(null);
@@ -51,6 +62,14 @@ export default function App() {
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const dataMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('mywork-home-theme', homeTheme);
+    } catch {
+      // The selected theme still applies for this session when storage is unavailable.
+    }
+  }, [homeTheme]);
 
   useEffect(() => {
     if (desktop) return;
@@ -309,7 +328,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app" data-home-theme={homeTheme}>
       <header className={`deck${selected ? ' deck-record' : ''}`}>
         {selected && (
           <button type="button" className="back-key" onClick={() => setSelectedId(null)}>
@@ -385,6 +404,21 @@ export default function App() {
             >
               Archived <span className="num">{archivedCount}</span>
             </button>
+          )}
+          {!selected && view === 'map' && (
+            <label className="theme-control">
+              <span className="visually-hidden">Homepage theme</span>
+              <select
+                className="key theme-key"
+                aria-label="Homepage theme"
+                title="Choose homepage theme"
+                value={homeTheme}
+                onChange={(event) => setHomeTheme(event.currentTarget.value as HomeTheme)}
+              >
+                <option value="spacewave">Spacewave</option>
+                <option value="drift">Drift</option>
+              </select>
+            </label>
           )}
           {data.customers.length > 0 && (
             <button
@@ -465,7 +499,11 @@ export default function App() {
         </div>
       </header>
 
-      <main className={`stage${selected ? ' has-workspace' : ''}`}>
+      <main
+        className={`stage${selected ? ' has-workspace' : ''}`}
+        data-home-theme={!selected && view === 'map' ? homeTheme : undefined}
+      >
+        {homeTheme === 'drift' && <DriftSurface water={!selected && view === 'map'} />}
         {selected ? (
           <CustomerWorkspace
             key={selected.id}

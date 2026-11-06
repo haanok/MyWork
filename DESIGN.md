@@ -59,6 +59,14 @@ components:
 
 Spacewave is a quiet, high-contrast work surface: deep indigo fields, layered ink-blue panels, cyan navigation and focused magenta urgency marks. Fine diagonal wave lines belong to the customer map; the CRM record uses flat panels and dividers so tasks stay easy to scan. Hanken Grotesk carries both interface and long-form task descriptions.
 
+## Home themes
+
+- **Spacewave** is the default: the existing dark map, star field, and bright status lamps.
+- **Drift** is an optional monochrome theme with a near-black canvas, suspended underwater starlight, white hierarchy, translucent glass panels, blurred menus, and floating glass customer lamps. Lamp texture supplies depth; whitespace and thin borders supply structure.
+- Drift's underwater star field drifts slowly and continuously with depth, faint short trails, and subtle shimmer. Pointer movement gently pushes nearby particles away from the cursor; clicks never create expanding rings. Glass highlights follow the pointer across lamps, menus, and context panels without moving content. The decorative canvas is input-transparent, capped at 360 stars, 1.5x pixel density and roughly 30 fps, and pauses while hidden. Reduced motion keeps static stars and glass with normal focus feedback.
+- Drift context menus and rails carry a thin Spacewave gradient rim (violet, blue, cyan) over the monochrome glass. Lamps use fewer inner rings and a softer glint so they read calmer while keeping the translucent glass look.
+- The theme is selected from the map toolbar and saved locally in the browser. Spacewave remains the default; Drift carries through the map, customer context workspace, and menus.
+
 ## Colors
 
 - `space-void` and `space-base` are the page shell and map ground.
