@@ -28,7 +28,7 @@ export function DriftSurface({ water }: { water: boolean }) {
     let current = { x: 0, y: 0 };
     let glass: HTMLElement | null = null;
     let pointer: { x: number; y: number; target: HTMLElement | null } | null = null;
-    const surfaces = '.lamp, .data-menu-list, .context-rail, .customer-rail, .import-dialog, .quick-add-dialog, .mcp-dialog';
+    const surfaces = '.lamp, .data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog';
 
     const resetGlass = () => {
       glass?.style.removeProperty('--glass-x');
