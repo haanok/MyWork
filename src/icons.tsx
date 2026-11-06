@@ -101,3 +101,24 @@ export const IconCalendar = (p: SVGProps<SVGSVGElement>) => (
     <path d="M3.5 10h17M8 3v4M16 3v4" />
   </svg>
 );
+
+export const IconMore = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="5.5" cy="12" r="1.1" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.1" fill="currentColor" />
+    <circle cx="18.5" cy="12" r="1.1" fill="currentColor" />
+  </svg>
+);
+
+export const IconUserPlus = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="10" cy="8" r="3.5" />
+    <path d="M3.5 19.5c.6-3.4 3.2-5.5 6.5-5.5 1.5 0 2.8.4 3.9 1.2M18 14v6M15 17h6" />
+  </svg>
+);
+
+export const IconBolt = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z" />
+  </svg>
+);

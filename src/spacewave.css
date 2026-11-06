@@ -213,25 +213,6 @@ button {
   margin-left: auto;
 }
 
-.theme-control {
-  display: flex;
-}
-
-.theme-key {
-  min-width: 108px;
-  padding-right: 28px;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23a4afcf' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  cursor: pointer;
-}
-
-.theme-key option {
-  background: var(--space-panel);
-  color: var(--space-fg);
-}
-
 .search {
   display: flex;
   width: min(250px, 24vw);
@@ -1891,17 +1872,6 @@ button {
     font-size: 0.78rem;
   }
 
-  .theme-key {
-    min-width: 96px;
-    min-height: 35px;
-    padding-inline: 8px 25px;
-    font-size: 0.76rem;
-  }
-
-  .deck-tools > .key.primary svg {
-    display: none;
-  }
-
   .tally {
     display: none;
   }
@@ -2154,10 +2124,6 @@ kbd {
   line-height: 1.4;
 }
 
-.quick-add-key kbd {
-  margin-left: 2px;
-}
-
 .quick-add-dialog {
   width: min(560px, calc(100vw - 32px));
 }
@@ -2352,16 +2318,6 @@ kbd {
   }
 }
 
-/* Search shortcut hint */
-.search-kbd {
-  flex: none;
-  pointer-events: none;
-}
-
-.search:focus-within .search-kbd {
-  display: none;
-}
-
 /* Import / export menu */
 .data-menu {
   position: relative;
@@ -2406,10 +2362,6 @@ kbd {
 }
 
 @media (max-width: 760px) {
-  .search-kbd {
-    display: none;
-  }
-
   .deck-tools .data-menu-key {
     display: grid;
   }
@@ -2531,8 +2483,75 @@ kbd {
 }
 
 @media (max-width: 980px) {
-  .tally,
-  .quick-add-key kbd {
+  .tally {
     display: none;
+  }
+}
+
+/* Toolbar: daily actions stay visible; theme, import/export and MCP live in the "More" menu. */
+.deck-tools .key {
+  white-space: nowrap;
+}
+
+.tally {
+  gap: 16px;
+}
+
+.data-menu-group {
+  display: grid;
+}
+
+.data-menu-heading {
+  margin: 0;
+  padding: 7px 10px 4px;
+  color: var(--space-quiet);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.data-menu-divider {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--space-line);
+}
+
+.data-menu-list .data-menu-check {
+  margin-left: auto;
+  color: var(--space-cyan);
+}
+
+.theme-swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 50%;
+}
+
+.theme-swatch-spacewave { background: linear-gradient(135deg, #74deee, #9aa8ff 55%, #ff91bf); }
+.theme-swatch-drift { background: radial-gradient(circle at 35% 30%, #f4f4f5, #3a3b3d 70%); }
+.theme-swatch-paper { border-color: #b9ad95; background: radial-gradient(circle, #fbf8f1 0 40%, #1f4c8f 42% 55%, #fbf8f1 57%); }
+.theme-swatch-vivicta { background: linear-gradient(180deg, #b7a2ff, #62efb8 60%, #050b15); }
+
+@media (max-width: 1180px) {
+  .deck-tools > :is(.quick-add-key, .key.primary) {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .deck-tools > :is(.quick-add-key, .key.primary) .key-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 680px) {
+  .deck-tools > :is(.quick-add-key, .key.primary) {
+    width: 35px;
   }
 }

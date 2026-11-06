@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerWorkspace } from './CustomerWorkspace';
+import { AuroraSurface } from './AuroraSurface';
 import { DriftSurface } from './DriftSurface';
 import { today } from './dates';
 import { fetchMcpInfo, type McpInfo } from './api';
-import { IconArrowLeft, IconCalendar, IconDownload, IconPlug, IconPlus, IconSearch, IconTransfer, IconUpload } from './icons';
+import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
 import { McpConnectDialog } from './McpConnect';
 import { OrbMap } from './OrbMap';
 import { TodayView } from './TodayView';
@@ -27,12 +28,15 @@ function useCompact() {
 }
 
 const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
-type HomeTheme = 'spacewave' | 'drift';
+const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta'] as const;
+type HomeTheme = (typeof HOME_THEMES)[number];
+const THEME_LABELS: Record<HomeTheme, string> = { spacewave: 'Spacewave', drift: 'Drift', paper: 'Paper', vivicta: 'Vivicta' };
 type View = 'map' | 'today';
 
 function savedHomeTheme(): HomeTheme {
   try {
-    return window.localStorage.getItem('mywork-home-theme') === 'drift' ? 'drift' : 'spacewave';
+    const saved = window.localStorage.getItem('mywork-home-theme');
+    return HOME_THEMES.find((theme) => theme === saved) ?? 'spacewave';
   } catch {
     return 'spacewave';
   }
@@ -291,11 +295,6 @@ export default function App() {
 
         {!selected && <p className="tally" role="status">
           <span className="tally-item">
-            <span className="pip lamp-overdue" />
-            <b className="num">{tally.overdue}</b> overdue
-          </span>
-          <span className="tally-item">
-            <span className="pip lamp-open" />
             <b className="num">{tally.open}</b> open
           </span>
           <span className="tally-item">
@@ -322,9 +321,8 @@ export default function App() {
                   e.currentTarget.blur();
                 }
               }}
-              title="Name or short name. Enter opens the best match."
+              title={`Name or short name. Enter opens the best match. (${isMac ? '⌘F' : 'Ctrl+F'})`}
             />
-            {!query && <kbd className="search-kbd" aria-hidden="true">{isMac ? '⌘F' : 'Ctrl+F'}</kbd>}
           </label>
           {!selected && (
             <button
@@ -351,21 +349,6 @@ export default function App() {
               Archived <span className="num">{archivedCount}</span>
             </button>
           )}
-          {!selected && view === 'map' && (
-            <label className="theme-control">
-              <span className="visually-hidden">Homepage theme</span>
-              <select
-                className="key theme-key"
-                aria-label="Homepage theme"
-                title="Choose homepage theme"
-                value={homeTheme}
-                onChange={(event) => setHomeTheme(event.currentTarget.value as HomeTheme)}
-              >
-                <option value="spacewave">Spacewave</option>
-                <option value="drift">Drift</option>
-              </select>
-            </label>
-          )}
           {data.customers.length > 0 && (
             <button
               type="button"
@@ -373,29 +356,53 @@ export default function App() {
               onClick={() => setShowQuickAdd(true)}
               title={`Quick add a task for any customer (${QUICK_ADD_KEYS})`}
             >
-              <IconPlus width={15} height={15} />
-              Quick add <kbd>{QUICK_ADD_KEYS}</kbd>
+              <IconBolt width={15} height={15} />
+              <span className="key-label">Quick add</span>
             </button>
           )}
-          {mcpInfo?.enabled && (
-            <button type="button" className="icon-key" onClick={() => setShowMcp(true)} aria-label="Connect an AI assistant (MCP)" title="Connect via MCP">
-              <IconPlug />
+          {!selected && (
+            <button type="button" className="key primary" onClick={addCustomer} title="Add customer">
+              <IconUserPlus width={16} height={16} />
+              <span className="key-label">Add customer</span>
             </button>
           )}
           <div className="data-menu" ref={dataMenuRef}>
             <button
               type="button"
               className="icon-key data-menu-key"
-              aria-label="Import or export"
-              title="Import / export"
+              aria-label="More: theme, import and export"
+              title="Theme, import / export"
               aria-haspopup="menu"
               aria-expanded={dataMenuOpen}
               onClick={() => setDataMenuOpen((open) => !open)}
             >
-              <IconTransfer />
+              <IconMore />
             </button>
             {dataMenuOpen && (
-              <div className="data-menu-list" role="menu">
+              <div className="data-menu-list" role="menu" aria-label="More">
+                <div role="group" aria-labelledby="theme-menu-label" className="data-menu-group">
+                  <p id="theme-menu-label" className="data-menu-heading">Theme</p>
+                  {HOME_THEMES.map((theme) => (
+                    <button
+                      key={theme}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={homeTheme === theme}
+                      onClick={() => setHomeTheme(theme)}
+                    >
+                      <span className={`theme-swatch theme-swatch-${theme}`} aria-hidden="true" />
+                      {THEME_LABELS[theme]}
+                      {homeTheme === theme && <IconCheck className="data-menu-check" width={15} height={15} />}
+                    </button>
+                  ))}
+                </div>
+                <div className="data-menu-divider" role="separator" />
+                {mcpInfo?.enabled && (
+                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); setShowMcp(true); }}>
+                    <IconPlug width={16} height={16} />
+                    Connect AI assistant…
+                  </button>
+                )}
                 <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); exportJson(); }}>
                   <IconDownload width={16} height={16} />
                   Export JSON
@@ -414,12 +421,6 @@ export default function App() {
               onChange={(e) => void importJson(e.target.files?.[0])}
             />
           </div>
-          {!selected && (
-            <button type="button" className="key primary" onClick={addCustomer}>
-              <IconPlus width={16} height={16} />
-              Add customer
-            </button>
-          )}
         </div>
       </header>
 
@@ -428,6 +429,7 @@ export default function App() {
         data-home-theme={!selected && view === 'map' ? homeTheme : undefined}
       >
         {homeTheme === 'drift' && <DriftSurface water={!selected && view === 'map'} />}
+        {homeTheme === 'vivicta' && <AuroraSurface active={!selected && view === 'map'} />}
         {selected ? (
           <CustomerWorkspace
             key={selected.id}

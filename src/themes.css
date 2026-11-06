@@ -1,0 +1,622 @@
+/* ------------------------------------------------------------------ */
+/* Paper: daylight ledger. Warm paper, iron-gall ink, rubber-stamp     */
+/* customers on faint graph paper. The only light theme.               */
+/* ------------------------------------------------------------------ */
+
+.app[data-home-theme='paper'] {
+  color-scheme: light;
+  --space-void: #e9e3d6;
+  --space-base: #f3eee3;
+  --space-panel: #f8f4eb;
+  --space-raised: #ebe5d8;
+  --space-high: #e0d8c8;
+  --space-line: #d4cab6;
+  --space-fg: #1f1b16;
+  --space-muted: #554d43;
+  --space-quiet: #6d655a;
+  --space-cyan: #1f4c8f;
+  --space-blue: #57479c;
+  --space-pink: #b3301d;
+  --space-coral: #b3301d;
+  --space-green: #2d6a4c;
+  --paper-ink: #1f4c8f;
+  --paper-ink-deep: #163a6f;
+  --paper-sheet: #fbf8f1;
+  background: var(--space-base);
+  color: var(--space-fg);
+  accent-color: var(--space-cyan);
+}
+
+.app[data-home-theme='paper'] ::selection {
+  color: var(--paper-sheet);
+  background: var(--paper-ink);
+}
+
+.app[data-home-theme='paper'] * {
+  scrollbar-color: #c4b9a3 transparent;
+}
+
+.app[data-home-theme='paper'] .deck {
+  border-bottom-color: var(--space-line);
+  background: var(--paper-sheet);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 70%);
+}
+
+.app[data-home-theme='paper'] .search {
+  border-color: var(--space-line);
+  background: var(--space-base);
+}
+
+.app[data-home-theme='paper'] .key,
+.app[data-home-theme='paper'] .icon-key {
+  color: var(--space-muted);
+}
+
+.app[data-home-theme='paper'] .key {
+  border-color: var(--space-line);
+  background-color: var(--paper-sheet);
+}
+
+.app[data-home-theme='paper'] .back-key:hover,
+.app[data-home-theme='paper'] .crm-secondary:hover,
+.app[data-home-theme='paper'] .key:hover,
+.app[data-home-theme='paper'] .icon-key:hover {
+  border-color: #b9ad95;
+  background-color: var(--space-raised);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='paper'] .crm-primary {
+  border-color: var(--paper-ink);
+  background: var(--paper-ink);
+  color: var(--paper-sheet);
+}
+
+.app[data-home-theme='paper'] .crm-primary:hover:not(:disabled) {
+  border-color: var(--paper-ink-deep);
+  background: var(--paper-ink-deep);
+  color: var(--paper-sheet);
+}
+
+.app[data-home-theme='paper'] .crm-primary:disabled {
+  border-color: var(--space-line);
+  background: var(--space-raised);
+  color: var(--space-quiet);
+}
+
+.app[data-home-theme='paper'] .today-key[aria-pressed='true'] {
+  border-color: var(--paper-ink);
+  background: #e3e8f0;
+}
+
+.app[data-home-theme='paper'] .today-key-count {
+  background: var(--space-high);
+}
+
+.app[data-home-theme='paper'] .today-key-count.is-alert {
+  background: var(--space-pink);
+  color: var(--paper-sheet);
+}
+
+.app[data-home-theme='paper'] .pip {
+  background: var(--paper-ink);
+}
+
+.app[data-home-theme='paper'] .pip.lamp-overdue {
+  background: var(--space-pink);
+}
+
+.app[data-home-theme='paper'] .pip.lamp-clear {
+  background: #9c9282;
+}
+
+/* Map: graph paper with a 24px minor and 120px major grid. */
+.stage[data-home-theme='paper'] .map {
+  background-color: var(--space-base);
+  background-image:
+    linear-gradient(rgb(31 76 143 / 9%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(31 76 143 / 9%) 1px, transparent 1px),
+    linear-gradient(rgb(31 76 143 / 4.5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(31 76 143 / 4.5%) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  background-position: -1px -1px;
+}
+
+/* Customers as rubber stamps: a double ink ring on a paper disc. */
+.stage[data-home-theme='paper'] .lamp {
+  border: 2px solid var(--paper-ink);
+  background: var(--paper-sheet);
+  color: var(--paper-ink);
+  box-shadow:
+    inset 0 0 0 3px var(--paper-sheet),
+    inset 0 0 0 4px rgb(31 76 143 / 45%),
+    0 6px 14px -9px rgb(70 48 20 / 45%);
+}
+
+.stage[data-home-theme='paper'] .lamp-open .lamp {
+  border-color: var(--paper-ink);
+  background: var(--paper-sheet);
+}
+
+.stage[data-home-theme='paper'] .lamp-doing .lamp {
+  border-style: dashed;
+  border-color: var(--space-blue);
+  background: #f4f1f8;
+  color: var(--space-blue);
+  box-shadow:
+    inset 0 0 0 3px #f4f1f8,
+    inset 0 0 0 4px rgb(87 71 156 / 40%),
+    0 6px 14px -9px rgb(70 48 20 / 45%);
+}
+
+.stage[data-home-theme='paper'] .lamp-overdue .lamp {
+  border-color: var(--space-pink);
+  background: var(--space-pink);
+  color: var(--paper-sheet);
+  box-shadow:
+    inset 0 0 0 3px var(--space-pink),
+    inset 0 0 0 4px rgb(251 248 241 / 55%),
+    0 7px 16px -9px rgb(120 30 15 / 55%);
+}
+
+.stage[data-home-theme='paper'] .lamp-clear .lamp {
+  border-width: 1px;
+  border-color: #9c9282;
+  background: var(--space-base);
+  color: #6d655a;
+  box-shadow: 0 4px 10px -8px rgb(70 48 20 / 35%);
+}
+
+.stage[data-home-theme='paper'] .is-selected .lamp {
+  outline-color: var(--space-fg);
+}
+
+.stage[data-home-theme='paper'] .strip {
+  border-color: var(--space-line);
+  background: var(--paper-sheet);
+  color: var(--space-fg);
+  box-shadow: 0 3px 8px -6px rgb(70 48 20 / 40%);
+}
+
+.stage[data-home-theme='paper'] .legend {
+  color: var(--space-muted);
+}
+
+.stage[data-home-theme='paper'] .cord-edge {
+  stroke: var(--space-base);
+}
+
+.stage[data-home-theme='paper'] .cord-core {
+  stroke: var(--paper-ink);
+}
+
+.stage[data-home-theme='paper'] .cord-plug {
+  fill: var(--paper-ink);
+  stroke: var(--space-base);
+}
+
+.stage[data-home-theme='paper'] :is(.socket, .empty-orb) {
+  border: 2px dashed var(--paper-ink);
+  background: var(--paper-sheet);
+  color: var(--paper-ink);
+}
+
+.stage[data-home-theme='paper'] :is(.socket, .empty-orb):hover {
+  border-style: solid;
+  background: #eef1f5;
+}
+
+/* Workspace: flat sheets separated by hairlines. */
+.app[data-home-theme='paper'] .crm-workspace {
+  background: var(--space-base);
+}
+
+.app[data-home-theme='paper'] .customer-rail,
+.app[data-home-theme='paper'] .context-rail {
+  background: var(--space-panel);
+}
+
+.app[data-home-theme='paper'] .customer-nav-item {
+  border-bottom-color: rgb(212 202 182 / 70%);
+}
+
+.app[data-home-theme='paper'] .customer-nav-item:hover {
+  background: var(--space-raised);
+}
+
+.app[data-home-theme='paper'] .customer-nav-item.is-current {
+  background: #e6e9ee;
+}
+
+.app[data-home-theme='paper'] :is(.contact-avatar, .record-mark, .customer-mark, .empty-mark) {
+  border-color: rgb(31 76 143 / 45%);
+  background: var(--paper-sheet);
+  color: var(--paper-ink);
+}
+
+.app[data-home-theme='paper'] .empty-mark.is-clear {
+  border-color: rgb(45 106 76 / 50%);
+  color: var(--space-green);
+}
+
+.app[data-home-theme='paper'] .customer-nav-count {
+  background: var(--space-high);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='paper'] .task-composer {
+  border-color: var(--space-line);
+  background: var(--paper-sheet);
+  box-shadow: 0 6px 18px -14px rgb(70 48 20 / 40%);
+}
+
+.app[data-home-theme='paper'] :is(.crm-field, .short-name-input, .quick-add-input, .task-status-select, .customer-status-control select) {
+  border-color: #cbbfa8;
+  background: var(--paper-sheet);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='paper'] .task-status-select.st-doing {
+  border-color: var(--space-blue);
+  color: var(--space-blue);
+}
+
+.app[data-home-theme='paper'] :is(.priority-control, .task-filters) {
+  border-color: var(--space-line);
+  background: var(--space-raised);
+}
+
+.app[data-home-theme='paper'] :is(.priority-control button.is-active, .task-filters button.is-active, .task-filters button[aria-pressed='true']) {
+  background: var(--paper-sheet);
+  color: var(--space-fg);
+  box-shadow: 0 1px 3px rgb(70 48 20 / 18%);
+}
+
+.app[data-home-theme='paper'] .task-entry:hover {
+  background: rgb(255 255 255 / 45%);
+}
+
+.app[data-home-theme='paper'] .task-entry.is-complete .task-title-line h4 {
+  text-decoration-color: #9c9282;
+}
+
+.app[data-home-theme='paper'] .task-description {
+  color: #3d362e;
+}
+
+.app[data-home-theme='paper'] .task-customer {
+  border-color: rgb(31 76 143 / 35%);
+  background: #e9edf3;
+  color: var(--paper-ink-deep);
+}
+
+.app[data-home-theme='paper'] .task-customer:hover {
+  background: #dfe6ef;
+}
+
+.app[data-home-theme='paper'] .remove-customer {
+  color: var(--space-pink);
+}
+
+.app[data-home-theme='paper'] .quick-add-high {
+  border-color: rgb(179 48 29 / 45%);
+}
+
+.app[data-home-theme='paper'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .toast, .vault-setup-content) {
+  border-color: var(--space-line);
+  background: var(--paper-sheet);
+  color: var(--space-fg);
+  box-shadow: 0 18px 40px -22px rgb(70 48 20 / 50%);
+}
+
+.app[data-home-theme='paper'] .import-dialog::backdrop {
+  background: rgb(60 48 30 / 32%);
+}
+
+.app[data-home-theme='paper'] .vault-setup {
+  background-image: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Vivicta: polar night. Slow aurora curtains hang over the map;       */
+/* aurora green is the action colour, ice blue marks completion.       */
+/* ------------------------------------------------------------------ */
+
+.app[data-home-theme='vivicta'] {
+  --space-void: #03070e;
+  --space-base: #050b15;
+  --space-panel: #08111e;
+  --space-raised: #0f1d2e;
+  --space-high: #16283c;
+  --space-line: #1c3248;
+  --space-fg: #eaf5f3;
+  --space-muted: #a2bcc0;
+  --space-quiet: #7f99a3;
+  --space-cyan: #62efb8;
+  --space-blue: #b7a2ff;
+  --space-pink: #ff8fab;
+  --space-coral: #ff8fab;
+  --space-green: #9cd3ff;
+  --aurora-deep: #0a3a35;
+  background: var(--space-base);
+}
+
+.app[data-home-theme='vivicta'] * {
+  scrollbar-color: #24405a transparent;
+}
+
+.app[data-home-theme='vivicta'] .deck {
+  border-bottom-color: rgb(98 239 184 / 14%);
+  background: rgb(4 9 17 / 92%);
+}
+
+.app[data-home-theme='vivicta'] .search {
+  border-color: var(--space-line);
+  background: #040a13;
+}
+
+.app[data-home-theme='vivicta'] .back-key:hover,
+.app[data-home-theme='vivicta'] .crm-secondary:hover,
+.app[data-home-theme='vivicta'] .key:hover {
+  border-color: #2f5370;
+}
+
+.app[data-home-theme='vivicta'] .crm-primary {
+  color: #03140f;
+}
+
+.app[data-home-theme='vivicta'] .crm-primary:hover:not(:disabled) {
+  border-color: #9cf7d3;
+  background: #9cf7d3;
+}
+
+.app[data-home-theme='vivicta'] .crm-primary:disabled {
+  border-color: #1f3448;
+  background: #13243a;
+  color: #7f99a3;
+}
+
+.app[data-home-theme='vivicta'] .today-key[aria-pressed='true'] {
+  background: #0b2a2a;
+}
+
+.app[data-home-theme='vivicta'] .today-key-count {
+  background: var(--space-high);
+}
+
+.app[data-home-theme='vivicta'] .today-key-count.is-alert {
+  background: var(--space-pink);
+  color: #22060e;
+}
+
+.app[data-home-theme='vivicta'] .pip {
+  background: var(--space-cyan);
+}
+
+.app[data-home-theme='vivicta'] .pip.lamp-overdue {
+  background: var(--space-pink);
+}
+
+.app[data-home-theme='vivicta'] .pip.lamp-clear {
+  background: var(--space-green);
+}
+
+/* Map: night sky with a fixed star field; the canvas paints the curtains. */
+.stage[data-home-theme='vivicta'] {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 120% 70% at 50% 115%, #0b2230 0%, transparent 60%),
+    linear-gradient(180deg, #02050b 0%, #040b16 55%, #071624 100%);
+}
+
+.stage[data-home-theme='vivicta']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(235 250 255 / 80%) 0 0.7px, transparent 1.3px),
+    radial-gradient(circle at 67% 9%, rgb(235 250 255 / 70%) 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 83% 31%, rgb(235 250 255 / 55%) 0 0.6px, transparent 1.2px),
+    radial-gradient(circle, rgb(220 240 255 / 40%) 0 0.6px, transparent 1.1px),
+    radial-gradient(circle, rgb(220 240 255 / 22%) 0 0.5px, transparent 1px);
+  background-size: auto, auto, auto, 137px 113px, 61px 79px;
+  background-position: 0 0, 0 0, 0 0, 23px 41px, 7px 13px;
+  mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 92%);
+}
+
+.aurora-sky {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: blur(6px) saturate(1.15);
+  opacity: 0.85;
+  mix-blend-mode: screen;
+}
+
+.stage[data-home-theme='vivicta'] .map {
+  background: transparent;
+}
+
+/* Customers as ice: dark translucent discs lit from above by the aurora. */
+.stage[data-home-theme='vivicta'] .lamp {
+  border: 1px solid rgb(98 239 184 / 45%);
+  background:
+    radial-gradient(circle at 50% -10%, rgb(98 239 184 / 34%), transparent 62%),
+    radial-gradient(circle at 50% 120%, rgb(10 30 48 / 90%), rgb(6 16 28 / 92%));
+  color: #effffa;
+  box-shadow:
+    inset 0 1px 0 rgb(200 255 235 / 28%),
+    inset 0 -8px 14px -10px rgb(156 211 255 / 30%),
+    0 12px 24px -14px rgb(0 0 0 / 85%);
+  backdrop-filter: blur(6px);
+}
+
+.stage[data-home-theme='vivicta'] .lamp-open .lamp {
+  border-color: rgb(98 239 184 / 70%);
+}
+
+.stage[data-home-theme='vivicta'] .lamp-doing .lamp {
+  border-color: rgb(183 162 255 / 70%);
+  background:
+    radial-gradient(circle at 50% -10%, rgb(183 162 255 / 34%), transparent 62%),
+    radial-gradient(circle at 50% 120%, rgb(18 22 50 / 90%), rgb(10 12 32 / 92%));
+}
+
+.stage[data-home-theme='vivicta'] .lamp-overdue .lamp {
+  border-color: rgb(255 143 171 / 80%);
+  background:
+    radial-gradient(circle at 50% -10%, rgb(255 143 171 / 42%), transparent 64%),
+    radial-gradient(circle at 50% 120%, rgb(48 12 26 / 92%), rgb(28 8 18 / 94%));
+  box-shadow:
+    inset 0 1px 0 rgb(255 210 222 / 30%),
+    0 12px 26px -12px rgb(255 100 140 / 35%);
+}
+
+.stage[data-home-theme='vivicta'] .lamp-clear .lamp {
+  border-color: rgb(156 211 255 / 30%);
+  background: radial-gradient(circle at 50% 120%, rgb(10 24 40 / 80%), rgb(6 14 26 / 85%));
+  color: #a9c6d6;
+  box-shadow: inset 0 1px 0 rgb(200 230 255 / 14%), 0 10px 20px -14px rgb(0 0 0 / 80%);
+}
+
+.stage[data-home-theme='vivicta'] .strip {
+  border-color: rgb(98 239 184 / 22%);
+  background: rgb(5 12 22 / 82%);
+  color: var(--space-fg);
+  backdrop-filter: blur(8px);
+}
+
+.stage[data-home-theme='vivicta'] .cord-edge {
+  stroke: #03070e;
+}
+
+.stage[data-home-theme='vivicta'] .cord-core {
+  stroke: var(--space-cyan);
+}
+
+.stage[data-home-theme='vivicta'] .cord-plug {
+  fill: var(--space-cyan);
+  stroke: #03070e;
+}
+
+.stage[data-home-theme='vivicta'] :is(.socket, .empty-orb) {
+  border-color: rgb(98 239 184 / 50%);
+  background: radial-gradient(circle at 50% 0%, rgb(98 239 184 / 18%), rgb(6 16 28 / 90%) 70%);
+  color: var(--space-cyan);
+}
+
+.stage[data-home-theme='vivicta'] :is(.socket, .empty-orb):hover {
+  border-color: var(--space-cyan);
+}
+
+.stage[data-home-theme='vivicta'] .legend {
+  color: var(--space-muted);
+}
+
+/* Workspace: polar-night panels; a faint aurora wash crowns the ledger. */
+.app[data-home-theme='vivicta'] .crm-workspace {
+  background: var(--space-base);
+}
+
+.app[data-home-theme='vivicta'] .crm-main {
+  background: radial-gradient(ellipse 90% 220px at 50% 0%, rgb(98 239 184 / 7%), transparent 100%);
+}
+
+.app[data-home-theme='vivicta'] .customer-rail,
+.app[data-home-theme='vivicta'] .context-rail {
+  background: var(--space-panel);
+}
+
+.app[data-home-theme='vivicta'] .customer-nav-item {
+  border-bottom-color: rgb(28 50 72 / 60%);
+}
+
+.app[data-home-theme='vivicta'] .customer-nav-item:hover {
+  background: #0d1a2a;
+}
+
+.app[data-home-theme='vivicta'] .customer-nav-item.is-current {
+  background: #0c2427;
+}
+
+.app[data-home-theme='vivicta'] :is(.contact-avatar, .record-mark, .customer-mark, .empty-mark) {
+  border-color: rgb(98 239 184 / 35%);
+  background: #0c1f26;
+  color: #c8fbe6;
+}
+
+.app[data-home-theme='vivicta'] .empty-mark.is-clear {
+  border-color: rgb(156 211 255 / 40%);
+  color: var(--space-green);
+}
+
+.app[data-home-theme='vivicta'] .customer-nav-count {
+  background: var(--space-high);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='vivicta'] .task-composer {
+  border-color: #1d3a4c;
+  background: #081522;
+}
+
+.app[data-home-theme='vivicta'] :is(.crm-field, .short-name-input, .quick-add-input, .task-status-select, .customer-status-control select) {
+  border-color: #23405a;
+  background: #050d18;
+}
+
+.app[data-home-theme='vivicta'] .task-status-select.st-doing {
+  border-color: rgb(183 162 255 / 70%);
+  color: #d9ceff;
+}
+
+.app[data-home-theme='vivicta'] :is(.priority-control, .task-filters) {
+  background: #050d18;
+}
+
+.app[data-home-theme='vivicta'] :is(.priority-control button.is-active, .task-filters button.is-active) {
+  background: #12283a;
+}
+
+.app[data-home-theme='vivicta'] .task-entry:hover {
+  background: rgb(14 36 48 / 45%);
+}
+
+.app[data-home-theme='vivicta'] .task-entry.is-complete .task-title-line h4 {
+  text-decoration-color: #4f6b78;
+}
+
+.app[data-home-theme='vivicta'] .task-description {
+  color: #bfd3d6;
+}
+
+.app[data-home-theme='vivicta'] .task-customer {
+  border-color: rgb(98 239 184 / 30%);
+  background: #0a2025;
+}
+
+.app[data-home-theme='vivicta'] .task-customer:hover {
+  background: #0d2b2f;
+}
+
+.app[data-home-theme='vivicta'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .toast, .vault-setup-content) {
+  border-color: #1f3a50;
+  background: linear-gradient(180deg, #0a1b26 0%, #07111d 120px);
+  box-shadow: 0 20px 44px -22px rgb(0 0 0 / 90%), inset 0 1px 0 rgb(98 239 184 / 12%);
+}
+
+.app[data-home-theme='vivicta'] .import-dialog::backdrop {
+  background: rgb(1 4 9 / 76%);
+}
+
+.app[data-home-theme='vivicta'] .vault-setup {
+  background-image: none;
+}
+
+.app[data-home-theme='paper'] .theme-swatch:not(.theme-swatch-paper) {
+  border-color: rgb(31 27 22 / 18%);
+}
