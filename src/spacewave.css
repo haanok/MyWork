@@ -657,6 +657,63 @@ button {
   transition: opacity 180ms ease;
 }
 
+.orb.has-add-task:hover,
+.orb.has-add-task:focus-within {
+  z-index: 4;
+}
+
+.orb-add-task {
+  position: absolute;
+  z-index: 2;
+  top: -12px;
+  left: -12px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--space-line);
+  border-radius: 50%;
+  background: var(--space-panel);
+  color: var(--space-cyan);
+  box-shadow: 0 5px 12px -6px rgb(0 0 0 / 65%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-7px, -7px) scale(0.88);
+  transition: opacity 180ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1), background-color 140ms, border-color 140ms;
+}
+
+.orb.has-add-task:hover .orb-add-task,
+.orb.has-add-task:focus-within .orb-add-task {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(0, 0) scale(1);
+}
+
+.orb-add-task:hover {
+  border-color: var(--space-cyan);
+  background: var(--space-raised);
+  color: var(--space-fg);
+}
+
+.orb-add-task:focus-visible {
+  opacity: 1;
+  outline-offset: 3px;
+  pointer-events: auto;
+}
+
+.orb.is-archived .orb-add-task { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-add-task,
+  .orb.has-add-task:hover .orb-add-task,
+  .orb.has-add-task:focus-within .orb-add-task { transform: none; }
+}
+
+@media (hover: none) {
+  .orb-add-task { display: none; }
+}
+
 .lamp {
   position: relative;
   display: grid;

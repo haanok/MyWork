@@ -13,7 +13,7 @@ import { rankCustomers } from './quickAddParse';
 import { sampleData } from './sample';
 import { localStorageAdapter, parseImport, serverStorageAdapter } from './storage';
 import { useBoard } from './store';
-import type { Task } from './types';
+import type { Customer, Task } from './types';
 
 function useCompact() {
   const query = '(max-width: 760px)';
@@ -72,6 +72,7 @@ export default function App() {
   const [mcpInfo, setMcpInfo] = useState<McpInfo | null>(null);
   const [showMcp, setShowMcp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddInitialText, setQuickAddInitialText] = useState('');
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const dataMenuRef = useRef<HTMLDivElement>(null);
@@ -144,6 +145,7 @@ export default function App() {
       }
       if (key !== 'k' || data.customers.length === 0) return;
       e.preventDefault();
+      setQuickAddInitialText('');
       setShowQuickAdd(true);
     };
     document.addEventListener('keydown', onKey);
@@ -353,7 +355,7 @@ export default function App() {
             <button
               type="button"
               className="key quick-add-key"
-              onClick={() => setShowQuickAdd(true)}
+              onClick={() => { setQuickAddInitialText(''); setShowQuickAdd(true); }}
               title={`Quick add a task for any customer (${QUICK_ADD_KEYS})`}
             >
               <IconBolt width={15} height={15} />
@@ -477,6 +479,10 @@ export default function App() {
             onSelect={setSelectedId}
             onAdvanceTask={advanceTask}
             onAddCustomer={addCustomer}
+            onQuickAddCustomer={(customer: Customer) => {
+              setQuickAddInitialText(`${customer.shortName || customer.name}: `);
+              setShowQuickAdd(true);
+            }}
             onLoadSample={() => actions.replace(sampleData())}
           />
         )}
@@ -501,7 +507,8 @@ export default function App() {
         <QuickAddDialog
           customers={data.customers}
           current={selected}
-          onClose={() => setShowQuickAdd(false)}
+          initialText={quickAddInitialText}
+          onClose={() => { setShowQuickAdd(false); setQuickAddInitialText(''); }}
           onAdd={(customerId, title, priority, due) => {
             actions.addTask(customerId, title, '', priority, due);
             const name = data.customers.find((c) => c.id === customerId)?.name ?? 'customer';

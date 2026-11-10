@@ -9,13 +9,14 @@ export const QUICK_ADD_KEYS = isMac ? '⌘K' : 'Ctrl+K';
 interface Props {
   customers: Customer[];
   current: Customer | null;
+  initialText?: string;
   onAdd: (customerId: string, title: string, priority: Priority, due?: string) => void;
   onClose: () => void;
 }
 
-export function QuickAddDialog({ customers, current, onAdd, onClose }: Props) {
+export function QuickAddDialog({ customers, current, initialText = '', onAdd, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
   const parsed = useMemo(() => parseQuickAdd(text, customers, current), [text, customers, current]);
   const exampleKey = 'customer';
 
@@ -60,6 +61,9 @@ export function QuickAddDialog({ customers, current, onAdd, onClose }: Props) {
           spellCheck={false}
           placeholder={current ? `Task for ${current.name}…` : `${exampleKey}: send report fri !`}
           value={text}
+          onFocus={(event) => {
+            if (initialText) event.currentTarget.setSelectionRange(initialText.length, initialText.length);
+          }}
           onChange={(e) => setText(e.target.value)}
           aria-describedby="quick-add-preview quick-add-help"
         />

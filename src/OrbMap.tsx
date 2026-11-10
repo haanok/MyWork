@@ -16,6 +16,7 @@ interface Props {
   onSelect: (id: string | null) => void;
   onAdvanceTask: (task: Task) => void;
   onAddCustomer: () => void;
+  onQuickAddCustomer: (customer: Customer) => void;
   onLoadSample?: () => void;
 }
 
@@ -32,6 +33,7 @@ export function OrbMap({
   onSelect,
   onAdvanceTask,
   onAddCustomer,
+  onQuickAddCustomer,
   onLoadSample,
 }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -178,7 +180,7 @@ export function OrbMap({
         return (
           <div
             key={c.id}
-            className={`orb lamp-${s.lamp}${selected ? ' is-selected' : ''}${dim ? ' is-dim' : ''}${muted ? ' is-muted' : ''}${c.status === 'archived' ? ' is-archived' : ''}`}
+            className={`orb lamp-${s.lamp} has-add-task${selected ? ' is-selected' : ''}${dim ? ' is-dim' : ''}${muted ? ' is-muted' : ''}${c.status === 'archived' ? ' is-archived' : ''}`}
             style={style}
           >
             <button
@@ -196,6 +198,16 @@ export function OrbMap({
               }}
             >
               {s.lamp === 'clear' ? <IconCheck width={lr * 0.7} height={lr * 0.7} strokeWidth={2.4} /> : <span className="lamp-count">{s.open}</span>}
+            </button>
+            <button
+              type="button"
+              className="orb-add-task"
+              aria-label={`Add task for ${c.name}`}
+              title={`Add task for ${c.name}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => { event.stopPropagation(); onQuickAddCustomer(c); }}
+            >
+              <IconPlus width={15} height={15} />
             </button>
             <span className="strip" aria-hidden="true">
               <span className="strip-name">{c.name}</span>
