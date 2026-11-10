@@ -284,6 +284,10 @@
   color: #3d362e;
 }
 
+.app[data-home-theme='paper'] .task-solution p {
+  color: #3d362e;
+}
+
 .app[data-home-theme='paper'] .task-customer {
   border-color: rgb(31 76 143 / 35%);
   background: #e9edf3;
@@ -591,6 +595,10 @@
 }
 
 .app[data-home-theme='vivicta'] .task-description {
+  color: #bfd3d6;
+}
+
+.app[data-home-theme='vivicta'] .task-solution p {
   color: #bfd3d6;
 }
 

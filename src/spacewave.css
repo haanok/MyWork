@@ -1351,6 +1351,30 @@ button {
   -webkit-line-clamp: 3;
 }
 
+.task-solution {
+  max-width: 70ch;
+  margin: 8px 0 0;
+  padding: 6px 0 6px 10px;
+  border-left: 2px solid var(--space-green);
+}
+
+.task-solution-label {
+  display: block;
+  color: var(--space-green);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.task-solution p {
+  margin: 2px 0 0;
+  color: #c1cbe4;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
 .task-expand {
   margin: 0;
   padding: 0;
