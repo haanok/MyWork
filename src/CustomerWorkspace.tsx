@@ -359,6 +359,7 @@ export function TaskEntry({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? '');
+  const [solution, setSolution] = useState(task.solution ?? '');
   const [due, setDue] = useState(task.due ?? '');
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const overdue = !!task.due && task.due < today() && task.status !== 'done';
@@ -367,18 +368,19 @@ export function TaskEntry({
   const save = () => {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
-    onUpdate(task.id, { title: cleanTitle, description: description.trim(), due: due || undefined });
+    onUpdate(task.id, { title: cleanTitle, description: description.trim(), solution: solution.trim() || undefined, due: due || undefined });
     setEditing(false);
   };
 
   const startEditing = () => {
     setTitle(task.title);
     setDescription(task.description ?? '');
+    setSolution(task.solution ?? '');
     setDue(task.due ?? '');
     setEditing(true);
   };
 
-  const dirty = title !== task.title || description !== (task.description ?? '') || due !== (task.due ?? '');
+  const dirty = title !== task.title || description !== (task.description ?? '') || solution !== (task.solution ?? '') || due !== (task.due ?? '');
   const cancelEdit = () => {
     if (dirty && !window.confirm('Discard unsaved changes to this task?')) return;
     setEditing(false);
@@ -408,6 +410,7 @@ export function TaskEntry({
           <div className="task-editor">
             <input className="crm-field" aria-label="Task title" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={onKeyDown} autoFocus />
             <textarea className="crm-field" aria-label="Task description" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} onKeyDown={onKeyDown} placeholder="Add details and next steps" />
+            <textarea className="crm-field" aria-label="Task solution" rows={3} value={solution} onChange={(event) => setSolution(event.target.value)} onKeyDown={onKeyDown} placeholder="Solution: what you did, for later reference" />
             <div className="editor-actions">
               <label className="date-control"><span>Due date</span><input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
               <button type="button" className="crm-secondary" onClick={cancelEdit}>Cancel</button>
@@ -428,6 +431,12 @@ export function TaskEntry({
             <p className={`task-description${task.description ? '' : ' is-blank'}${hasLongDescription && !descriptionExpanded ? ' is-collapsed' : ''}`}>
               {task.description || 'No description yet. Add the details needed to move this forward.'}
             </p>
+            {task.solution && (
+              <div className="task-solution">
+                <span className="task-solution-label">Solution</span>
+                <p>{task.solution}</p>
+              </div>
+            )}
             <div className="task-links">
               {hasLongDescription && (
                 <button

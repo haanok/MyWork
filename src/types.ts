@@ -27,6 +27,8 @@ export interface Task {
   status: TaskStatus;
   priority: Priority;
   description?: string;
+  /** What was done to resolve the task, for later reference. */
+  solution?: string;
   /** YYYY-MM-DD, local date */
   due?: string;
   createdAt: string;

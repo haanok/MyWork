@@ -68,6 +68,7 @@ function taskView(data, task) {
     priority: task.priority,
     ...(task.due ? { due: task.due } : {}),
     ...(task.description ? { description: task.description } : {}),
+    ...(task.solution ? { solution: task.solution } : {}),
     ...(task.doneAt ? { doneAt: task.doneAt } : {}),
   };
 }
@@ -178,7 +179,7 @@ function buildServer(sub, storage) {
 
   server.registerTool('search', {
     title: 'Search',
-    description: 'Case-insensitive text search across customer names, notes, contacts, and task titles and descriptions.',
+    description: 'Case-insensitive text search across customer names, notes, contacts, and task titles, descriptions and solutions.',
     inputSchema: { query: z.string().min(1) },
     annotations: readOnly,
   }, reader((data, { query }) => {
@@ -188,7 +189,7 @@ function buildServer(sub, storage) {
       customers: data.customers
         .filter((c) => has(c.name) || has(c.notes) || (c.contacts ?? []).some((k) => has(k.name) || has(k.detail)))
         .map((c) => customerSummary(data, c)),
-      tasks: data.tasks.filter((t) => has(t.title) || has(t.description)).map((t) => taskView(data, t)),
+      tasks: data.tasks.filter((t) => has(t.title) || has(t.description) || has(t.solution)).map((t) => taskView(data, t)),
     };
   }));
 
@@ -296,7 +297,7 @@ function buildServer(sub, storage) {
 
   server.registerTool('update_task', {
     title: 'Update task',
-    description: 'Change a task: title, status (open, doing, done), due date, priority or description. Pass an empty string to clear due or description.',
+    description: 'Change a task: title, status (open, doing, done), due date, priority, description or solution (what was done, for later reference). Pass an empty string to clear due, description or solution.',
     inputSchema: {
       task_id: z.string().min(1),
       title: z.string().trim().min(1).optional(),
@@ -304,14 +305,16 @@ function buildServer(sub, storage) {
       due: z.union([DATE, z.literal('')]).optional(),
       priority: z.enum(PRIORITIES).optional(),
       description: z.string().optional(),
+      solution: z.string().optional().describe('What was done to resolve the task'),
     },
     annotations: additive,
-  }, writer((data, { task_id: id, title, status, due, priority, description }, stamp) => {
+  }, writer((data, { task_id: id, title, status, due, priority, description, solution }, stamp) => {
     const task = findTask(data, id);
     if (title !== undefined) task.title = title;
     if (priority !== undefined) task.priority = priority;
     if (due !== undefined) { if (due) task.due = due; else delete task.due; }
     if (description !== undefined) { if (description) task.description = description; else delete task.description; }
+    if (solution !== undefined) { if (solution) task.solution = solution; else delete task.solution; }
     if (status !== undefined) {
       task.status = status;
       if (status === 'done') task.doneAt = stamp; else delete task.doneAt;
