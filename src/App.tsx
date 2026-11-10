@@ -28,9 +28,9 @@ function useCompact() {
 }
 
 const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
-const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta'] as const;
+const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'porcelain', 'porcelain-dark'] as const;
 type HomeTheme = (typeof HOME_THEMES)[number];
-const THEME_LABELS: Record<HomeTheme, string> = { spacewave: 'Spacewave', drift: 'Drift', paper: 'Paper', vivicta: 'Vivicta' };
+const THEME_LABELS: Record<HomeTheme, string> = { spacewave: 'Spacewave', drift: 'Drift', paper: 'Paper', vivicta: 'Vivicta', porcelain: 'Porcelain', 'porcelain-dark': 'Porcelain Dark' };
 type View = 'map' | 'today';
 
 function savedHomeTheme(): HomeTheme {
@@ -430,6 +430,8 @@ export default function App() {
       >
         {homeTheme === 'drift' && <DriftSurface water={!selected && view === 'map'} />}
         {homeTheme === 'vivicta' && <AuroraSurface active={!selected && view === 'map'} />}
+        {homeTheme === 'porcelain' && <AuroraSurface active={!selected && view === 'map'} variant="porcelain-light" />}
+        {homeTheme === 'porcelain-dark' && <AuroraSurface active={!selected && view === 'map'} variant="porcelain-dark" />}
         {selected ? (
           <CustomerWorkspace
             key={selected.id}
