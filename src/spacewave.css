@@ -2337,16 +2337,23 @@ kbd {
 }
 
 /* Customer short name (used as "sg: …" in quick add) */
+.record-head {
+  padding-block: 14px;
+}
+
 .record-controls {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: 10px;
 }
 
-.customer-status-control > span:first-child {
-  min-width: 70px;
-  text-align: right;
+.record-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 18px;
 }
 
 .short-name-control {
@@ -2354,7 +2361,7 @@ kbd {
 }
 
 .short-name-input {
-  width: 110px;
+  width: 90px;
   min-height: 32px;
   padding: 0 10px;
   border: 1px solid var(--space-line);
@@ -2382,7 +2389,7 @@ kbd {
 
 .short-name-taken {
   position: absolute;
-  top: calc(100% + 18px);
+  top: calc(100% + 3px);
   right: 0;
   color: var(--space-coral);
   font-size: 0.72rem;
@@ -2391,7 +2398,11 @@ kbd {
 
 @media (max-width: 760px) {
   .record-controls {
-    gap: 4px;
+    gap: 8px;
+  }
+
+  .record-fields {
+    gap: 6px 12px;
   }
 
   .short-name-input {
@@ -2634,5 +2645,453 @@ kbd {
 @media (max-width: 680px) {
   .deck-tools > :is(.quick-add-key, .key.primary) {
     width: 35px;
+  }
+}
+
+/* ---------- Kanban board layout ---------- */
+
+.record-view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.details-toggle {
+  min-height: 33px;
+  font-size: 0.8rem;
+}
+
+.crm-workspace.is-board {
+  grid-template-columns: minmax(205px, 0.78fr) minmax(0, 3.2fr);
+}
+
+.crm-workspace.is-board.has-details {
+  grid-template-columns: minmax(205px, 0.78fr) minmax(0, 2.6fr) minmax(245px, 0.88fr);
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(250px, 1fr));
+  align-items: start;
+  gap: 14px;
+  margin-top: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.kanban-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--space-line);
+  border-radius: 8px;
+  background: var(--space-panel);
+  transition: border-color 140ms, box-shadow 140ms;
+}
+
+.kanban-column.is-drop-target {
+  border-color: var(--space-cyan);
+  box-shadow: inset 0 0 0 1px var(--space-cyan);
+}
+
+.kanban-column-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 2px;
+}
+
+.kanban-column-head h3 {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.kanban-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--space-muted);
+}
+
+.kanban-dot.st-doing {
+  background: var(--space-blue);
+}
+
+.kanban-dot.st-done {
+  background: var(--space-green);
+}
+
+.kanban-count {
+  color: var(--space-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.kanban-overdue {
+  color: var(--space-pink);
+  font-size: 0.74rem;
+}
+
+.kanban-add-key {
+  width: 28px;
+  height: 28px;
+}
+
+.kanban-cards {
+  display: flex;
+  min-height: 48px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kanban-empty {
+  margin: 0;
+  padding: 14px 8px;
+  border: 1px dashed var(--space-line);
+  border-radius: 6px;
+  color: var(--space-quiet);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.kanban-add-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--space-muted);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.kanban-add-row:hover {
+  color: var(--space-fg);
+}
+
+.kanban-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--space-cyan);
+  border-radius: 6px;
+  background: var(--space-raised);
+}
+
+.kanban-composer textarea {
+  resize: vertical;
+}
+
+.kanban-composer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.kanban-composer .priority-control {
+  margin-left: 0;
+}
+
+.kanban-composer .editor-actions {
+  justify-content: flex-end;
+}
+
+.task-entry.is-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--space-line);
+  border-radius: 6px;
+  background: var(--space-raised);
+  cursor: grab;
+}
+
+.task-entry.is-card:active {
+  cursor: grabbing;
+}
+
+.task-entry.is-card.is-dragging {
+  opacity: 0.45;
+}
+
+.task-entry.is-card .task-content {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  cursor: auto;
+}
+
+.task-entry.is-card .task-date {
+  grid-column: 1;
+  grid-row: 2;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  padding-top: 0;
+}
+
+.task-entry.is-card .task-date strong {
+  font-size: 0.76rem;
+}
+
+.task-entry.is-card .task-date span {
+  font-size: 0.7rem;
+}
+
+.task-entry.is-card .task-controls {
+  grid-column: 2;
+  grid-row: 2;
+  gap: 2px;
+}
+
+.task-entry.is-card .task-status-select {
+  max-width: 112px;
+}
+
+.task-entry.is-card .task-description {
+  font-size: 0.84rem;
+}
+
+@media (max-width: 1120px) {
+  .crm-workspace.is-board,
+  .crm-workspace.is-board.has-details {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .crm-workspace.is-board.has-details {
+    overflow-y: auto;
+  }
+
+  .crm-workspace.is-board.has-details .crm-main {
+    min-height: min-content;
+    overflow: visible;
+  }
+
+  .crm-workspace.is-board .context-rail {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 0 22px;
+    overflow: visible;
+    border-top: 1px solid var(--space-line);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .kanban-board {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: visible;
+  }
+
+  .crm-workspace.is-board .context-rail {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .record-view-controls {
+    order: 0;
+  }
+}
+
+/* ---------- Time tracking ---------- */
+
+.customer-rail {
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-rail .customer-nav {
+  flex: 1 0 auto;
+}
+
+.time-tracker {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px 16px;
+  border-top: 1px solid var(--space-line);
+  background: var(--space-panel);
+}
+
+.time-tracker-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.time-tracker-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--space-quiet);
+}
+
+.time-tracker.is-running .time-tracker-dot {
+  background: var(--space-green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--space-green) 25%, transparent);
+  animation: time-tracker-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes time-tracker-pulse {
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .time-tracker.is-running .time-tracker-dot { animation: none; }
+}
+
+.time-tracker-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.time-tracker-label {
+  overflow: hidden;
+  color: var(--space-muted);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time-tracker-clock {
+  color: var(--space-fg);
+  font-size: 0.98rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-tracker-total {
+  color: var(--space-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.time-tracker-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.time-tracker-actions > button {
+  flex: 1;
+  min-height: 34px;
+  font-size: 0.8rem;
+}
+
+.time-summary-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.import-dialog .time-summary-lead {
+  margin: 6px 0 16px;
+  font-size: 0.86rem;
+}
+
+.time-summary-list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(52vh, 460px);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border-top: 1px solid var(--space-line);
+}
+
+.time-summary-list > li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--space-line);
+}
+
+.time-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.time-summary-row > span {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-summary-row em {
+  margin-left: 8px;
+  color: var(--space-muted);
+  font-size: 0.8rem;
+  font-style: normal;
+}
+
+.time-summary-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--space-muted);
+  font-size: 0.8rem;
+}
+
+.time-summary-tasks li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.time-summary-tasks svg {
+  flex: none;
+  color: var(--space-green);
+  transform: translateY(2px);
+}
+
+.time-summary-solution {
+  color: var(--space-quiet);
+}
+
+.time-summary-total {
+  padding-top: 10px;
+  font-size: 0.95rem;
+}
+
+.time-summary-actions {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 680px) {
+  .time-tracker {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 13px;
+  }
+
+  .time-tracker-actions > button {
+    width: auto;
+    min-height: 32px;
   }
 }

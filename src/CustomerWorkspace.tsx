@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { formatDueLong, relativeDue, today, uid } from './dates';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { today, uid } from './dates';
 import { IconFlag, IconPlus, IconTrash } from './icons';
+import { KanbanBoard } from './KanbanBoard';
+import { TaskEntry } from './TaskEntry';
 import type { Customer, CustomerStatus, Priority, Task, TaskStatus } from './types';
 
 type TaskFilter = 'open' | 'done' | 'all';
+export type WorkspaceLayout = 'list' | 'board';
 
 interface Props {
   customer: Customer;
@@ -11,21 +14,19 @@ interface Props {
   tasks: Task[];
   autoFocusName: boolean;
   sourceLabel: string;
+  layout: WorkspaceLayout;
+  onLayoutChange: (layout: WorkspaceLayout) => void;
+  /** Rendered at the bottom of the customer list, e.g. the time tracker. */
+  railFooter?: ReactNode;
   onSelectCustomer: (id: string) => void;
   onAddCustomer: () => void;
   onUpdateCustomer: (patch: Partial<Customer>) => void;
-  onAddTask: (title: string, description: string, priority: Priority, due?: string) => void;
+  onAddTask: (title: string, description: string, priority: Priority, due?: string, status?: TaskStatus) => void;
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onRemoveTask: (id: string) => void;
   onArchiveCustomer: () => void;
   onDeleteCustomer: () => void;
 }
-
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  open: 'Open',
-  doing: 'In progress',
-  done: 'Completed',
-};
 
 const CUSTOMER_STATUSES: CustomerStatus[] = ['active', 'waiting', 'paused', 'archived'];
 const CUSTOMER_STATUS_LABEL: Record<CustomerStatus, string> = {
@@ -41,6 +42,9 @@ export function CustomerWorkspace({
   tasks,
   autoFocusName,
   sourceLabel,
+  layout,
+  onLayoutChange,
+  railFooter,
   onSelectCustomer,
   onAddCustomer,
   onUpdateCustomer,
@@ -58,6 +62,8 @@ export function CustomerWorkspace({
   const [priority, setPriority] = useState<Priority>('normal');
   const [composerOpen, setComposerOpen] = useState(false);
   const taskTitleRef = useRef<HTMLInputElement>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const isBoard = layout === 'board';
 
   useEffect(() => {
     if (composerOpen) taskTitleRef.current?.focus();
@@ -101,7 +107,7 @@ export function CustomerWorkspace({
   };
 
   return (
-    <div className="crm-workspace">
+    <div className={`crm-workspace${isBoard ? ' is-board' : ''}${isBoard && detailsOpen ? ' has-details' : ''}`}>
       <aside className="customer-rail" aria-label="Customer navigation">
         <div className="rail-heading">
           <div>
@@ -133,6 +139,7 @@ export function CustomerWorkspace({
             );
           })}
         </nav>
+        {railFooter}
       </aside>
 
       <section className="crm-main" aria-label={`${customer.name} task queue`}>
@@ -155,7 +162,25 @@ export function CustomerWorkspace({
             </div>
           </div>
           <div className="record-controls">
-          <label className="customer-status-control short-name-control">
+          <div className="record-view-controls">
+          <div className="task-filters layout-toggle" role="group" aria-label="Task layout">
+            <button type="button" aria-pressed={!isBoard} className={!isBoard ? 'is-active' : ''} onClick={() => onLayoutChange('list')}>List</button>
+            <button type="button" aria-pressed={isBoard} className={isBoard ? 'is-active' : ''} onClick={() => onLayoutChange('board')}>Board</button>
+          </div>
+          {isBoard && (
+            <button
+              type="button"
+              className="crm-secondary details-toggle"
+              aria-expanded={detailsOpen}
+              aria-controls="customer-details"
+              onClick={() => setDetailsOpen((open) => !open)}
+            >
+              {detailsOpen ? 'Hide details' : 'Notes & contacts'}
+            </button>
+          )}
+          </div>
+          <div className="record-fields">
+          <label className="customer-status-control short-name-control" title="Type “sg: send report” in quick add to log a task for this customer">
             <span>Short name</span>
             <input
               className="short-name-input"
@@ -171,7 +196,6 @@ export function CustomerWorkspace({
                 onUpdateCustomer({ shortName: shortName || undefined });
               }}
             />
-            <span className="short-name-hint">Quick add: “sg: send report”</span>
             {shortNameTaken && <span id="short-name-taken" className="short-name-taken">Also used by {shortNameTaken}</span>}
           </label>
           <label className="customer-status-control">
@@ -185,6 +209,7 @@ export function CustomerWorkspace({
             </select>
           </label>
           </div>
+          </div>
         </header>
 
         <div className="queue-summary" aria-label="Task summary">
@@ -193,6 +218,14 @@ export function CustomerWorkspace({
           <span><b>{doneCount}</b> completed</span>
         </div>
 
+        {isBoard ? (
+          <KanbanBoard
+            tasks={customerTasks}
+            onAddTask={onAddTask}
+            onUpdateTask={onUpdateTask}
+            onRemoveTask={onRemoveTask}
+          />
+        ) : (<>
         <button
           type="button"
           className="mobile-log-task crm-primary"
@@ -272,9 +305,11 @@ export function CustomerWorkspace({
             <TaskEntry key={task.id} task={task} onUpdate={onUpdateTask} onRemove={onRemoveTask} />
           ))}
         </div>
+        </>)}
       </section>
 
-      <aside className="context-rail" aria-label="Customer details">
+      {(!isBoard || detailsOpen) && (
+      <aside id="customer-details" className="context-rail" aria-label="Customer details">
         <section className="context-section">
           <div className="context-heading">
             <h3>Context</h3>
@@ -338,141 +373,7 @@ export function CustomerWorkspace({
           <button type="button" className="remove-customer delete-customer" onClick={onDeleteCustomer}>Delete customer</button>
         </div>
       </aside>
+      )}
     </div>
-  );
-}
-
-export function TaskEntry({
-  task,
-  onUpdate,
-  onRemove,
-  customer,
-  onOpenCustomer,
-}: {
-  task: Task;
-  onUpdate: (id: string, patch: Partial<Task>) => void;
-  onRemove: (id: string) => void;
-  /** Shown as a link to the customer in cross-customer views. */
-  customer?: Customer;
-  onOpenCustomer?: (id: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description ?? '');
-  const [solution, setSolution] = useState(task.solution ?? '');
-  const [due, setDue] = useState(task.due ?? '');
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
-  const overdue = !!task.due && task.due < today() && task.status !== 'done';
-  const hasLongDescription = (task.description?.length ?? 0) > 180 || (task.description?.split('\n').length ?? 0) > 3;
-
-  const save = () => {
-    const cleanTitle = title.trim();
-    if (!cleanTitle) return;
-    onUpdate(task.id, { title: cleanTitle, description: description.trim(), solution: solution.trim() || undefined, due: due || undefined });
-    setEditing(false);
-  };
-
-  const startEditing = () => {
-    setTitle(task.title);
-    setDescription(task.description ?? '');
-    setSolution(task.solution ?? '');
-    setDue(task.due ?? '');
-    setEditing(true);
-  };
-
-  const dirty = title !== task.title || description !== (task.description ?? '') || solution !== (task.solution ?? '') || due !== (task.due ?? '');
-  const cancelEdit = () => {
-    if (dirty && !window.confirm('Discard unsaved changes to this task?')) return;
-    setEditing(false);
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      cancelEdit();
-    }
-  };
-
-  return (
-    <article className={`task-entry${overdue ? ' is-overdue' : ''}${task.status === 'done' ? ' is-complete' : ''}`}>
-      <div className="task-date">
-        {task.due ? (
-          <>
-            <strong>{formatDueLong(task.due)}</strong>
-            <span>{overdue ? relativeDue(task.due) : task.status === 'done' ? 'Completed' : relativeDue(task.due)}</span>
-          </>
-        ) : (
-          <><strong>No due date</strong><span>Unscheduled</span></>
-        )}
-      </div>
-      <div className="task-content">
-        {editing ? (
-          <div className="task-editor">
-            <input className="crm-field" aria-label="Task title" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={onKeyDown} autoFocus />
-            <textarea className="crm-field" aria-label="Task description" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} onKeyDown={onKeyDown} placeholder="Add details and next steps" />
-            <textarea className="crm-field" aria-label="Task solution" rows={3} value={solution} onChange={(event) => setSolution(event.target.value)} onKeyDown={onKeyDown} placeholder="Solution: what you did, for later reference" />
-            <div className="editor-actions">
-              <label className="date-control"><span>Due date</span><input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
-              <button type="button" className="crm-secondary" onClick={cancelEdit}>Cancel</button>
-              <button type="button" className="crm-primary small-primary" onClick={save}>Save</button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="task-title-line">
-              <h4>{task.title}</h4>
-              {customer && (
-                <button type="button" className="task-customer" onClick={() => onOpenCustomer?.(customer.id)} title={`Open ${customer.name || 'customer'}`}>
-                  {customer.name || 'Untitled customer'}
-                </button>
-              )}
-              {task.priority === 'high' && <span className="priority-mark"><IconFlag width={13} height={13} /> High</span>}
-            </div>
-            <p className={`task-description${task.description ? '' : ' is-blank'}${hasLongDescription && !descriptionExpanded ? ' is-collapsed' : ''}`}>
-              {task.description || 'No description yet. Add the details needed to move this forward.'}
-            </p>
-            {task.solution && (
-              <div className="task-solution">
-                <span className="task-solution-label">Solution</span>
-                <p>{task.solution}</p>
-              </div>
-            )}
-            <div className="task-links">
-              {hasLongDescription && (
-                <button
-                  type="button"
-                  className="task-expand"
-                  aria-expanded={descriptionExpanded}
-                  onClick={() => setDescriptionExpanded((expanded) => !expanded)}
-                >
-                  {descriptionExpanded ? 'Read less' : 'Read more'}
-                </button>
-              )}
-              <button type="button" className="task-edit-link" onClick={startEditing}>Edit task</button>
-            </div>
-          </>
-        )}
-      </div>
-      <div className="task-controls">
-        <label className="status-select-label">
-          <span className="visually-hidden">Status for {task.title}</span>
-          <select className={`task-status-select st-${task.status}`} value={task.status} onChange={(event) => onUpdate(task.id, { status: event.target.value as TaskStatus })}>
-            {(['open', 'doing', 'done'] as TaskStatus[]).map((status) => <option value={status} key={status}>{STATUS_LABEL[status]}</option>)}
-          </select>
-        </label>
-          <button
-            type="button"
-            className={`icon-key subtle-icon priority-toggle${task.priority === 'high' ? ' is-on' : ''}`}
-            aria-label={`${task.priority === 'high' ? 'Remove high priority from' : 'Mark'} ${task.title}`}
-            aria-pressed={task.priority === 'high'}
-            onClick={() => onUpdate(task.id, { priority: task.priority === 'high' ? 'normal' : 'high' })}
-          >
-            <IconFlag width={15} height={15} />
-          </button>
-          <button type="button" className="icon-key subtle-icon" aria-label={`Delete ${task.title}`} onClick={() => onRemove(task.id)}>
-          <IconTrash width={16} height={16} />
-        </button>
-      </div>
-    </article>
   );
 }

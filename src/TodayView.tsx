@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TaskEntry } from './CustomerWorkspace';
+import { TaskEntry } from './TaskEntry';
 import { formatDueLong, toISODate, today } from './dates';
 import type { Customer, Task } from './types';
 
