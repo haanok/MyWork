@@ -3,7 +3,7 @@ import { today, uid } from './dates';
 import { DataConflictError } from './api';
 import { mergeBoards } from './merge';
 import { localStorageAdapter, type StorageAdapter } from './storage';
-import { emptyData, type AppData, type Customer, type Priority, type Task } from './types';
+import { emptyData, type AppData, type Customer, type Priority, type Task, type TaskStatus } from './types';
 
 type Action =
   | { type: 'replace'; data: AppData }
@@ -239,7 +239,7 @@ export function useBoard(adapter: StorageAdapter = localStorageAdapter) {
         withUndo(`${name} removed`);
         dispatch({ type: 'removeCustomer', id });
       },
-      addTask: (customerId: string, title: string, description: string, priority: Priority, due?: string) => {
+      addTask: (customerId: string, title: string, description: string, priority: Priority, due?: string, status: TaskStatus = 'open') => {
         const id = uid();
         const now = new Date().toISOString();
         dispatch({
@@ -249,11 +249,12 @@ export function useBoard(adapter: StorageAdapter = localStorageAdapter) {
             customerId,
             title,
             description: description || undefined,
-            status: 'open',
+            status,
             priority,
             due: due || undefined,
             createdAt: now,
             updatedAt: now,
+            ...(status === 'done' ? { doneAt: now } : {}),
           },
         });
         return id;

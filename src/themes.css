@@ -941,6 +941,14 @@
   :is(.app[data-home-theme='porcelain'], .app[data-home-theme='porcelain-dark']) .record-title-block { flex: 1; }
 
   :is(.app[data-home-theme='porcelain'], .app[data-home-theme='porcelain-dark']) .record-controls {
+    align-items: stretch;
+  }
+
+  :is(.app[data-home-theme='porcelain'], .app[data-home-theme='porcelain-dark']) .record-view-controls {
+    justify-content: flex-start;
+  }
+
+  :is(.app[data-home-theme='porcelain'], .app[data-home-theme='porcelain-dark']) .record-fields {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;

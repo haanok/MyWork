@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CustomerWorkspace } from './CustomerWorkspace';
+import { CustomerWorkspace, type WorkspaceLayout } from './CustomerWorkspace';
 import { AuroraSurface } from './AuroraSurface';
 import { DriftSurface } from './DriftSurface';
 import { today } from './dates';
 import { fetchMcpInfo, type McpInfo } from './api';
 import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
 import { McpConnectDialog } from './McpConnect';
+import { TimeSummaryDialog, TimeTrackerPanel } from './TimeTracker';
+import { savedTimeTrackingEnabled, TIME_TRACKING_ENABLED_KEY, useTimeTracker } from './timeTracking';
 import { OrbMap } from './OrbMap';
 import { TodayView } from './TodayView';
 import { isMac, QUICK_ADD_KEYS, QuickAddDialog } from './QuickAdd';
@@ -30,6 +32,7 @@ function useCompact() {
 const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
 const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'porcelain', 'porcelain-dark'] as const;
 const MAP_CENTER_DRIFT_KEY = 'mywork-map-center-drift';
+const WORKSPACE_LAYOUT_KEY = 'mywork-workspace-layout';
 type HomeTheme = (typeof HOME_THEMES)[number];
 const THEME_LABELS: Record<HomeTheme, string> = { spacewave: 'Spacewave', drift: 'Drift', paper: 'Paper', vivicta: 'Vivicta', porcelain: 'Porcelain', 'porcelain-dark': 'Porcelain Dark' };
 type View = 'map' | 'today';
@@ -39,6 +42,14 @@ function savedCenterDrift() {
     return window.localStorage.getItem(MAP_CENTER_DRIFT_KEY) !== 'false';
   } catch {
     return true;
+  }
+}
+
+function savedWorkspaceLayout(): WorkspaceLayout {
+  try {
+    return window.localStorage.getItem(WORKSPACE_LAYOUT_KEY) === 'board' ? 'board' : 'list';
+  } catch {
+    return 'list';
   }
 }
 
@@ -70,6 +81,9 @@ export default function App() {
   const compact = useCompact();
   const [homeTheme, setHomeTheme] = useState<HomeTheme>(savedHomeTheme);
   const [centerBubbles, setCenterBubbles] = useState(savedCenterDrift);
+  const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>(savedWorkspaceLayout);
+  const [timeTrackingEnabled, setTimeTrackingEnabled] = useState(savedTimeTrackingEnabled);
+  const [showTimeSummary, setShowTimeSummary] = useState(false);
   const [initialRoute] = useState(routeFromHash);
   const [selectedId, setSelectedId] = useState<string | null>(initialRoute.selectedId);
   const [view, setView] = useState<View>(initialRoute.view);
@@ -104,6 +118,22 @@ export default function App() {
   }, [centerBubbles]);
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem(WORKSPACE_LAYOUT_KEY, workspaceLayout);
+    } catch {
+      // The selected layout still applies for this session when storage is unavailable.
+    }
+  }, [workspaceLayout]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(TIME_TRACKING_ENABLED_KEY, String(timeTrackingEnabled));
+    } catch {
+      // The setting still applies for this session when storage is unavailable.
+    }
+  }, [timeTrackingEnabled]);
+
+  useEffect(() => {
     if (import.meta.env.DEV) {
       setMcpInfo({ enabled: true, url: 'https://mywork.example.com/mcp', clientId: 'example-client-id', issuer: 'https://id.example.com' });
       return;
@@ -114,6 +144,7 @@ export default function App() {
   }, []);
 
   const selected = data.customers.find((c) => c.id === selectedId) ?? null;
+  const tracker = useTimeTracker(timeTrackingEnabled && ready, selected?.id ?? null);
 
   // Keep the view and open customer in the URL so the browser back and forward buttons work.
   useEffect(() => {
@@ -417,8 +448,8 @@ export default function App() {
                   ))}
                 </div>
                 <div className="data-menu-divider" role="separator" />
-                <div role="group" aria-labelledby="map-menu-label" className="data-menu-group">
-                  <p id="map-menu-label" className="data-menu-heading">Map</p>
+                <div role="group" aria-labelledby="options-menu-label" className="data-menu-group">
+                  <p id="options-menu-label" className="data-menu-heading">Options</p>
                   <button
                     type="button"
                     role="menuitemcheckbox"
@@ -429,6 +460,21 @@ export default function App() {
                     Drift bubbles to center
                     {centerBubbles && <IconCheck className="data-menu-check" width={15} height={15} />}
                   </button>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={timeTrackingEnabled}
+                    title="Time how long each customer is open, with a summary when you clock out."
+                    onClick={() => setTimeTrackingEnabled((enabled) => !enabled)}
+                  >
+                    Time tracking
+                    {timeTrackingEnabled && <IconCheck className="data-menu-check" width={15} height={15} />}
+                  </button>
+                  {timeTrackingEnabled && (
+                    <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); setShowTimeSummary(true); }}>
+                      Time summary…
+                    </button>
+                  )}
                 </div>
                 <div className="data-menu-divider" role="separator" />
                 {mcpInfo?.enabled && (
@@ -474,6 +520,17 @@ export default function App() {
             tasks={data.tasks}
             autoFocusName={justAdded === selected.id}
             sourceLabel={sourceLabel}
+            layout={workspaceLayout}
+            onLayoutChange={setWorkspaceLayout}
+            railFooter={timeTrackingEnabled && (
+              <TimeTrackerPanel
+                state={tracker.state}
+                customers={data.customers}
+                onPause={tracker.pause}
+                onResume={tracker.resume}
+                onShowSummary={() => setShowTimeSummary(true)}
+              />
+            )}
             onSelectCustomer={setSelectedId}
             onAddCustomer={addCustomer}
             onUpdateCustomer={(patch) => actions.updateCustomer(selected.id, patch)}
@@ -488,7 +545,7 @@ export default function App() {
               actions.removeCustomer(selected.id);
               setSelectedId(null);
             }}
-            onAddTask={(title, description, priority, due) => actions.addTask(selected.id, title, description, priority, due)}
+            onAddTask={(title, description, priority, due, status) => actions.addTask(selected.id, title, description, priority, due, status)}
             onUpdateTask={actions.updateTask}
             onRemoveTask={actions.removeTask}
           />
@@ -551,6 +608,16 @@ export default function App() {
       )}
 
       {showMcp && mcpInfo?.enabled && <McpConnectDialog info={mcpInfo} onClose={() => setShowMcp(false)} />}
+      {showTimeSummary && (
+        <TimeSummaryDialog
+          state={tracker.state}
+          customers={data.customers}
+          tasks={data.tasks}
+          onResume={tracker.resume}
+          onClear={tracker.clear}
+          onClose={() => setShowTimeSummary(false)}
+        />
+      )}
 
     </div>
   );
