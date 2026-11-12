@@ -29,9 +29,18 @@ function useCompact() {
 
 const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
 const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'porcelain', 'porcelain-dark'] as const;
+const MAP_CENTER_DRIFT_KEY = 'mywork-map-center-drift';
 type HomeTheme = (typeof HOME_THEMES)[number];
 const THEME_LABELS: Record<HomeTheme, string> = { spacewave: 'Spacewave', drift: 'Drift', paper: 'Paper', vivicta: 'Vivicta', porcelain: 'Porcelain', 'porcelain-dark': 'Porcelain Dark' };
 type View = 'map' | 'today';
+
+function savedCenterDrift() {
+  try {
+    return window.localStorage.getItem(MAP_CENTER_DRIFT_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
 
 function savedHomeTheme(): HomeTheme {
   try {
@@ -60,6 +69,7 @@ export default function App() {
   const { data, ready, undo, loadFailed, storageError, actions, hasUnsavedChanges } = useBoard(adapter);
   const compact = useCompact();
   const [homeTheme, setHomeTheme] = useState<HomeTheme>(savedHomeTheme);
+  const [centerBubbles, setCenterBubbles] = useState(savedCenterDrift);
   const [initialRoute] = useState(routeFromHash);
   const [selectedId, setSelectedId] = useState<string | null>(initialRoute.selectedId);
   const [view, setView] = useState<View>(initialRoute.view);
@@ -84,6 +94,14 @@ export default function App() {
       // The selected theme still applies for this session when storage is unavailable.
     }
   }, [homeTheme]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(MAP_CENTER_DRIFT_KEY, String(centerBubbles));
+    } catch {
+      // The selected behavior still applies for this session when storage is unavailable.
+    }
+  }, [centerBubbles]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -399,6 +417,20 @@ export default function App() {
                   ))}
                 </div>
                 <div className="data-menu-divider" role="separator" />
+                <div role="group" aria-labelledby="map-menu-label" className="data-menu-group">
+                  <p id="map-menu-label" className="data-menu-heading">Map</p>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={centerBubbles}
+                    title="Let customer bubbles drift gently toward the center after you release them."
+                    onClick={() => setCenterBubbles((enabled) => !enabled)}
+                  >
+                    Drift bubbles to center
+                    {centerBubbles && <IconCheck className="data-menu-check" width={15} height={15} />}
+                  </button>
+                </div>
+                <div className="data-menu-divider" role="separator" />
                 {mcpInfo?.enabled && (
                   <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); setShowMcp(true); }}>
                     <IconPlug width={16} height={16} />
@@ -479,6 +511,7 @@ export default function App() {
             onSelect={setSelectedId}
             onAdvanceTask={advanceTask}
             onAddCustomer={addCustomer}
+            centerBubbles={centerBubbles}
             onQuickAddCustomer={(customer: Customer) => {
               setQuickAddInitialText(`${customer.shortName || customer.name}: `);
               setShowQuickAdd(true);

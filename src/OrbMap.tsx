@@ -13,6 +13,7 @@ interface Props {
   query: string;
   compact: boolean;
   isEmpty: boolean;
+  centerBubbles: boolean;
   onSelect: (id: string | null) => void;
   onAdvanceTask: (task: Task) => void;
   onAddCustomer: () => void;
@@ -30,6 +31,7 @@ export function OrbMap({
   query,
   compact,
   isEmpty,
+  centerBubbles,
   onSelect,
   onAdvanceTask,
   onAddCustomer,
@@ -94,6 +96,7 @@ export function OrbMap({
     height: size.height,
     focusId: selectedId,
     ringR,
+    centerBubbles,
   });
 
   const fallbackPositions = useMemo(() => {
