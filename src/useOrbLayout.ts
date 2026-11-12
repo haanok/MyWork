@@ -22,7 +22,6 @@ export interface LayoutSpec {
 interface SimNode extends SimulationNodeDatum, LayoutSpec {
   x: number;
   y: number;
-  pinned?: boolean;
 }
 
 export type Positions = Map<string, { x: number; y: number }>;
@@ -30,33 +29,6 @@ export type Positions = Map<string, { x: number; y: number }>;
 /** Cord leaves the focused lamp this far below centre and needs this half-height of clear space. */
 export const CORD_DROP = 24;
 const CORD_HALF = 50;
-const POSITION_STORAGE_KEY = 'mywork-map-positions-v1';
-
-type SavedPositions = Record<string, { x: number; y: number }>;
-
-function readSavedPositions(): SavedPositions {
-  try {
-    const raw = window.localStorage.getItem(POSITION_STORAGE_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : {};
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return Object.fromEntries(
-      Object.entries(parsed).filter(([id, value]) => {
-        if (!id || !value || typeof value !== 'object') return false;
-        const point = value as { x?: unknown; y?: unknown };
-        return typeof point.x === 'number'
-          && Number.isFinite(point.x)
-          && point.x >= 0
-          && point.x <= 1
-          && typeof point.y === 'number'
-          && Number.isFinite(point.y)
-          && point.y >= 0
-          && point.y <= 1;
-      }),
-    ) as SavedPositions;
-  } catch {
-    return {};
-  }
-}
 
 interface Options {
   width: number;
@@ -71,7 +43,6 @@ const reduceMotion = () =>
 export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ringR }: Options) {
   const simRef = useRef<Simulation<SimNode, undefined> | null>(null);
   const nodesRef = useRef(new Map<string, SimNode>());
-  const sizeRef = useRef({ width: 0, height: 0 });
   const [positions, setPositions] = useState<Positions>(new Map());
 
   const key = useMemo(
@@ -84,23 +55,7 @@ export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ring
     const cx = width / 2;
     const cy = height / 2;
     const known = nodesRef.current;
-    const previousSize = sizeRef.current;
-    const savedPositions = readSavedPositions();
     const focusNode = focusId ? known.get(focusId) : undefined;
-
-    if (previousSize.width > 0 && previousSize.height > 0) {
-      const scaleX = width / previousSize.width;
-      const scaleY = height / previousSize.height;
-      known.forEach((node) => {
-        node.x *= scaleX;
-        node.y *= scaleY;
-        if (node.fx != null) node.fx *= scaleX;
-        if (node.fy != null) node.fy *= scaleY;
-        node.vx = 0;
-        node.vy = 0;
-      });
-    }
-    sizeRef.current = { width, height };
 
     const next = new Map<string, SimNode>();
     for (const spec of specs) {
@@ -110,12 +65,10 @@ export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ring
         next.set(spec.id, prev);
       } else {
         const fromFocus = spec.kind === 'task' && focusNode;
-        const saved = spec.kind === 'customer' ? savedPositions[spec.id] : undefined;
         next.set(spec.id, {
           ...spec,
-          x: saved ? saved.x * width : fromFocus ? focusNode.x : cx + (Math.random() - 0.5) * 160,
-          y: saved ? saved.y * height : fromFocus ? focusNode.y : cy + (Math.random() - 0.5) * 160,
-          pinned: Boolean(saved),
+          x: fromFocus ? focusNode.x : cx + (Math.random() - 0.5) * 160,
+          y: fromFocus ? focusNode.y : cy + (Math.random() - 0.5) * 160,
         });
       }
     }
@@ -134,7 +87,6 @@ export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ring
 
     const strength = (n: SimNode) => {
       if (n.kind === 'task') return 0.16;
-      if (n.pinned) return 0;
       if (focusId) return n.id === focusId ? 0.3 : 0.012;
       return 0.022;
     };
@@ -169,40 +121,6 @@ export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ring
         const padBottom = Math.min(n.r + 6, height / 2 - 1);
         n.x = Math.max(padX, Math.min(width - padX, n.x));
         n.y = Math.max(padTop, Math.min(height - padBottom, n.y));
-        if (n.pinned) {
-          n.fx = n.x;
-          n.fy = n.y;
-        }
-      }
-    };
-
-    let lastSavedAt = 0;
-    let saveTimer = 0;
-    const savePositions = () => {
-      window.clearTimeout(saveTimer);
-      saveTimer = 0;
-      const saved = readSavedPositions();
-      nodes.forEach((node) => {
-        if (node.kind === 'customer') {
-          saved[node.id] = {
-            x: Math.max(0, Math.min(1, node.x / width)),
-            y: Math.max(0, Math.min(1, node.y / height)),
-          };
-        }
-      });
-      try {
-        window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(saved));
-        lastSavedAt = Date.now();
-      } catch {
-        // Keep the map usable when browser storage is unavailable or full.
-      }
-    };
-    const scheduleSave = () => {
-      const delay = 250 - (Date.now() - lastSavedAt);
-      if (delay <= 0) {
-        savePositions();
-      } else if (!saveTimer) {
-        saveTimer = window.setTimeout(savePositions, delay);
       }
     };
 
@@ -210,7 +128,6 @@ export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ring
       const map: Positions = new Map();
       for (const n of nodes) map.set(n.id, { x: n.x, y: n.y });
       setPositions(map);
-      scheduleSave();
     };
 
     simRef.current?.stop();
@@ -237,7 +154,6 @@ export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ring
     }
     return () => {
       sim.stop();
-      savePositions();
     };
     // `key` stands in for specs so identical specs do not restart the layout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -261,9 +177,8 @@ export function useOrbLayout(specs: LayoutSpec[], { width, height, focusId, ring
   const dragEnd = useCallback((id: string) => {
     const n = nodesRef.current.get(id);
     if (n) {
-      n.pinned = true;
-      n.fx = n.x;
-      n.fy = n.y;
+      n.fx = null;
+      n.fy = null;
     }
     simRef.current?.alphaTarget(0);
   }, []);
