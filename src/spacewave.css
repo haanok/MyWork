@@ -1469,6 +1469,11 @@ button {
   gap: 6px;
 }
 
+/* Keep the off-screen status text inside its task's scroll container. */
+.status-select-label {
+  position: relative;
+}
+
 .task-status-select {
   min-height: 30px;
   padding: 0 22px 0 8px;
@@ -2673,7 +2678,10 @@ kbd {
 
 .kanban-board {
   display: grid;
+  flex: 1;
+  min-height: 12rem;
   grid-template-columns: repeat(3, minmax(250px, 1fr));
+  grid-template-rows: minmax(0, 1fr);
   align-items: start;
   gap: 14px;
   margin-top: 16px;
@@ -2684,6 +2692,7 @@ kbd {
 .kanban-column {
   display: flex;
   min-width: 0;
+  max-height: 100%;
   flex-direction: column;
   gap: 10px;
   padding: 10px;
@@ -2750,9 +2759,14 @@ kbd {
 
 .kanban-cards {
   display: flex;
-  min-height: 48px;
+  min-height: 0;
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
+}
+
+.kanban-cards > * {
+  flex: none;
 }
 
 .kanban-empty {
@@ -2882,6 +2896,11 @@ kbd {
     overflow: visible;
   }
 
+  .crm-workspace.is-board.has-details .kanban-board {
+    flex: none;
+    height: max(12rem, 60dvh);
+  }
+
   .crm-workspace.is-board .context-rail {
     grid-column: 2;
     display: grid;
@@ -2894,10 +2913,25 @@ kbd {
   }
 }
 
+@media (680px < width <= 900px) {
+  .crm-workspace.is-board:not(.has-details) .crm-main {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
 @media (max-width: 680px) {
-  .kanban-board {
+  .kanban-board,
+  .crm-workspace.is-board.has-details .kanban-board {
+    flex: none;
+    height: auto;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
     overflow-x: visible;
+  }
+
+  .kanban-column {
+    max-height: max(12rem, 60dvh);
   }
 
   .crm-workspace.is-board .context-rail {
