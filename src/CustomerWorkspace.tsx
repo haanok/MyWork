@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { today, uid } from './dates';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { today, toISODate, uid } from './dates';
 import { IconFlag, IconPlus, IconTrash } from './icons';
 import { KanbanBoard } from './KanbanBoard';
+import { dailyTotals, formatDuration, useNow, type useTimeTracker } from './timeTracking';
+import { TimeTrackerPanel } from './TimeTracker';
 import { TaskEntry } from './TaskEntry';
 import type { Customer, CustomerStatus, Priority, Task, TaskStatus } from './types';
 
@@ -16,8 +18,8 @@ interface Props {
   sourceLabel: string;
   layout: WorkspaceLayout;
   onLayoutChange: (layout: WorkspaceLayout) => void;
-  /** Rendered at the bottom of the customer list, e.g. the time tracker. */
-  railFooter?: ReactNode;
+  tracker?: ReturnType<typeof useTimeTracker>;
+  onShowSummary: () => void;
   onSelectCustomer: (id: string) => void;
   onAddCustomer: () => void;
   onUpdateCustomer: (patch: Partial<Customer>) => void;
@@ -36,6 +38,66 @@ const CUSTOMER_STATUS_LABEL: Record<CustomerStatus, string> = {
   archived: 'Archived',
 };
 
+function CustomerRail({
+  customer, customers, tasks, tracker, onAddCustomer, onSelectCustomer, onShowSummary,
+}: Pick<Props, 'customer' | 'customers' | 'tasks' | 'tracker' | 'onAddCustomer' | 'onSelectCustomer' | 'onShowSummary'>) {
+  const now = useNow(tracker?.state.running ?? false);
+  const totals = tracker ? dailyTotals(tracker.state, now, toISODate(new Date(now))) : new Map<string, number>();
+  return (
+    <aside className="customer-rail" aria-label="Customer navigation">
+      <div className="rail-heading">
+        <div>
+          <h2>Customers</h2>
+          <span>{customers.length} records</span>
+        </div>
+        <button type="button" className="icon-key" onClick={onAddCustomer} aria-label="Add customer" title="Add customer">
+          <IconPlus />
+        </button>
+      </div>
+      <nav className="customer-nav">
+        {customers.map((entry) => {
+          const count = tasks.filter((task) => task.customerId === entry.id && task.status !== 'done').length;
+          return (
+            <button
+              type="button"
+              key={entry.id}
+              className={`customer-nav-item${entry.id === customer.id ? ' is-current' : ''}`}
+              aria-current={entry.id === customer.id ? 'page' : undefined}
+              onClick={() => onSelectCustomer(entry.id)}
+            >
+              <span className="customer-mark" aria-hidden="true">{entry.name.slice(0, 1).toUpperCase() || '?'}</span>
+              <span className="customer-nav-copy">
+                <span className="customer-nav-name">{entry.name || 'Untitled customer'}</span>
+                <span className="customer-nav-meta">
+                  <span className="customer-nav-status">{entry.status}</span>
+                  {tracker && (
+                    <span className="customer-nav-time" title="Time tracked today">
+                      <span aria-hidden="true"> · </span>
+                      <span className="visually-hidden">Time today </span>
+                      {formatDuration(totals.get(entry.id) ?? 0)}
+                    </span>
+                  )}
+                </span>
+              </span>
+              <span className="customer-nav-count">{count}</span>
+            </button>
+          );
+        })}
+      </nav>
+      {tracker && (
+        <TimeTrackerPanel
+          state={tracker.state}
+          customer={customer}
+          totals={totals}
+          onPause={tracker.pause}
+          onResume={tracker.resume}
+          onShowSummary={onShowSummary}
+        />
+      )}
+    </aside>
+  );
+}
+
 export function CustomerWorkspace({
   customer,
   customers,
@@ -44,7 +106,8 @@ export function CustomerWorkspace({
   sourceLabel,
   layout,
   onLayoutChange,
-  railFooter,
+  tracker,
+  onShowSummary,
   onSelectCustomer,
   onAddCustomer,
   onUpdateCustomer,
@@ -108,39 +171,15 @@ export function CustomerWorkspace({
 
   return (
     <div className={`crm-workspace${isBoard ? ' is-board' : ''}${isBoard && detailsOpen ? ' has-details' : ''}`}>
-      <aside className="customer-rail" aria-label="Customer navigation">
-        <div className="rail-heading">
-          <div>
-            <h2>Customers</h2>
-            <span>{customers.length} records</span>
-          </div>
-          <button type="button" className="icon-key" onClick={onAddCustomer} aria-label="Add customer" title="Add customer">
-            <IconPlus />
-          </button>
-        </div>
-        <nav className="customer-nav">
-          {customers.map((entry) => {
-            const count = tasks.filter((task) => task.customerId === entry.id && task.status !== 'done').length;
-            return (
-              <button
-                type="button"
-                key={entry.id}
-                className={`customer-nav-item${entry.id === customer.id ? ' is-current' : ''}`}
-                aria-current={entry.id === customer.id ? 'page' : undefined}
-                onClick={() => onSelectCustomer(entry.id)}
-              >
-                <span className="customer-mark" aria-hidden="true">{entry.name.slice(0, 1).toUpperCase() || '?'}</span>
-                <span className="customer-nav-copy">
-                  <span className="customer-nav-name">{entry.name || 'Untitled customer'}</span>
-                  <span className="customer-nav-status">{entry.status}</span>
-                </span>
-                <span className="customer-nav-count">{count}</span>
-              </button>
-            );
-          })}
-        </nav>
-        {railFooter}
-      </aside>
+      <CustomerRail
+        customer={customer}
+        customers={customers}
+        tasks={tasks}
+        tracker={tracker}
+        onAddCustomer={onAddCustomer}
+        onSelectCustomer={onSelectCustomer}
+        onShowSummary={onShowSummary}
+      />
 
       <section className="crm-main" aria-label={`${customer.name} task queue`}>
         <header className="record-head">

@@ -6,7 +6,7 @@ import { today } from './dates';
 import { fetchMcpInfo, type McpInfo } from './api';
 import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
 import { McpConnectDialog } from './McpConnect';
-import { TimeSummaryDialog, TimeTrackerPanel } from './TimeTracker';
+import { TimeSummaryDialog } from './TimeTracker';
 import { savedTimeTrackingEnabled, TIME_TRACKING_ENABLED_KEY, useTimeTracker } from './timeTracking';
 import { OrbMap } from './OrbMap';
 import { TodayView } from './TodayView';
@@ -470,7 +470,7 @@ export default function App() {
                     Time tracking
                     {timeTrackingEnabled && <IconCheck className="data-menu-check" width={15} height={15} />}
                   </button>
-                  {timeTrackingEnabled && (
+                  {(timeTrackingEnabled || tracker.state.segments.length > 0) && (
                     <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); setShowTimeSummary(true); }}>
                       Time summary…
                     </button>
@@ -522,15 +522,8 @@ export default function App() {
             sourceLabel={sourceLabel}
             layout={workspaceLayout}
             onLayoutChange={setWorkspaceLayout}
-            railFooter={timeTrackingEnabled && (
-              <TimeTrackerPanel
-                state={tracker.state}
-                customers={data.customers}
-                onPause={tracker.pause}
-                onResume={tracker.resume}
-                onShowSummary={() => setShowTimeSummary(true)}
-              />
-            )}
+            tracker={timeTrackingEnabled ? tracker : undefined}
+            onShowSummary={() => setShowTimeSummary(true)}
             onSelectCustomer={setSelectedId}
             onAddCustomer={addCustomer}
             onUpdateCustomer={(patch) => actions.updateCustomer(selected.id, patch)}
@@ -613,7 +606,7 @@ export default function App() {
           state={tracker.state}
           customers={data.customers}
           tasks={data.tasks}
-          onResume={tracker.resume}
+          onResume={timeTrackingEnabled ? tracker.resume : undefined}
           onClear={tracker.clear}
           onClose={() => setShowTimeSummary(false)}
         />

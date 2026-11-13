@@ -1,37 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toISODate } from './dates';
 import { IconCheck, IconClose, IconCopy } from './icons';
-import { formatClock, formatDuration, formatHours, totalsByCustomer, useNow, type TrackerState } from './timeTracking';
+import { formatClock, formatDuration, formatHours, dailyTotals, loggedDays, useNow, type TrackerState } from './timeTracking';
 import type { Customer, Task } from './types';
 
 /** Footer of the customer list: live clock plus the clock-out / resume controls. */
 export function TimeTrackerPanel({
   state,
-  customers,
+  customer,
+  totals,
   onPause,
   onResume,
   onShowSummary,
 }: {
   state: TrackerState;
-  customers: Customer[];
+  customer: Customer;
+  totals: Map<string, number>;
   onPause: () => void;
   onResume: () => void;
   onShowSummary: () => void;
 }) {
-  const now = useNow(state.running);
-  const totals = totalsByCustomer(state, now);
-  const sessionTotal = [...totals.values()].reduce((sum, ms) => sum + ms, 0);
-  const current = state.running ? state.segments[state.segments.length - 1] : undefined;
-  const currentName = current ? customers.find((c) => c.id === current.customerId)?.name || 'Untitled customer' : undefined;
+  const dayTotal = [...totals.values()].reduce((sum, ms) => sum + ms, 0);
+  const name = customer.name || 'Untitled customer';
 
   return (
     <section className={`time-tracker${state.running ? ' is-running' : ''}`} aria-label="Time tracking">
       <div className="time-tracker-status">
         <span className="time-tracker-dot" aria-hidden="true" />
         <span className="time-tracker-copy">
-          <span className="time-tracker-label">{state.running ? `Tracking ${currentName}` : 'Tracking paused'}</span>
+          <span className="time-tracker-label">{state.running ? `Tracking ${name}` : 'Tracking paused'}</span>
           <span className="time-tracker-clock" aria-live="off">
-            {current ? formatClock(totals.get(current.customerId) ?? 0) : formatClock(sessionTotal)}
-            {current && <span className="time-tracker-total"> · {formatDuration(sessionTotal)} total</span>}
+            {formatClock(totals.get(customer.id) ?? 0)}
+            <span className="time-tracker-total"> · {formatDuration(dayTotal)} total today</span>
           </span>
         </span>
       </div>
@@ -58,7 +58,7 @@ export function TimeSummaryDialog({
   state: TrackerState;
   customers: Customer[];
   tasks: Task[];
-  onResume: () => void;
+  onResume?: () => void;
   onClear: () => void;
   onClose: () => void;
 }) {
@@ -77,28 +77,36 @@ export function TimeSummaryDialog({
     return () => window.clearTimeout(t);
   }, [copied]);
 
-  const sessionStart = state.segments[0]?.start;
+  const today = toISODate(new Date(now));
+  const [pickedDay, setPickedDay] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const day = pickedDay || today;
+  const days = useMemo(() => loggedDays(state), [state]);
+  const customerNames = useMemo(() => {
+    const names = new Map(customers.map((c) => [c.id, c.name || 'Untitled customer']));
+    for (const segment of state.segments) {
+      if (!names.has(segment.customerId)) names.set(segment.customerId, 'Deleted customer');
+    }
+    return names;
+  }, [customers, state.segments]);
+
   const rows = useMemo(() => {
-    const totals = totalsByCustomer(state, now);
-    return [...totals.entries()]
-      .map(([customerId, ms]) => {
-        const customer = customers.find((c) => c.id === customerId);
-        const completed = sessionStart === undefined ? [] : tasks.filter((t) =>
-          t.customerId === customerId && t.status === 'done' && t.doneAt && Date.parse(t.doneAt) >= sessionStart);
-        return { customerId, name: customer?.name || (customer ? 'Untitled customer' : 'Deleted customer'), ms, completed };
-      })
+    const totals = dailyTotals(state, now, day);
+    return [...totals]
+      .filter(([id]) => !customerId || id === customerId)
+      .map(([id, ms]) => ({
+        customerId: id,
+        name: customerNames.get(id),
+        ms,
+        completed: tasks.filter((t) => t.customerId === id && t.status === 'done' && t.doneAt
+          && toISODate(new Date(t.doneAt)) === day),
+      }))
       .sort((a, b) => b.ms - a.ms);
-  }, [state, now, customers, tasks, sessionStart]);
+  }, [state, now, day, customerId, customerNames, tasks]);
   const total = rows.reduce((sum, row) => sum + row.ms, 0);
 
-  const range = sessionStart === undefined ? '' : `${new Date(sessionStart).toLocaleString(undefined, {
-    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-  })} – ${new Date(state.running ? now : state.segments[state.segments.length - 1].end).toLocaleTimeString(undefined, {
-    hour: '2-digit', minute: '2-digit',
-  })}`;
-
   const asText = () => [
-    `Time summary${range ? ` (${range})` : ''}`,
+    `Time summary (${day})`,
     ...rows.flatMap((row) => [
       `${row.name}: ${formatDuration(row.ms)} (${formatHours(row.ms)} h)`,
       ...row.completed.map((task) => `  - ${task.title}${task.solution ? `: ${task.solution.replace(/\s+/g, ' ')}` : ''}`),
@@ -107,6 +115,13 @@ export function TimeSummaryDialog({
   ].join('\n');
 
   const close = () => ref.current?.close();
+  const clearHistory = () => {
+    if (!window.confirm('Clear logged time for all customers on every day? This cannot be undone.')) return;
+    onClear();
+    setPickedDay('');
+    setCustomerId('');
+    setCopied(false);
+  };
 
   return (
     <dialog
@@ -122,11 +137,33 @@ export function TimeSummaryDialog({
           <IconClose width={16} height={16} />
         </button>
       </div>
-      <p className="time-summary-lead">
-        {rows.length === 0
-          ? 'No time logged yet. Time is tracked while a customer is open.'
-          : `${range}${state.paused ? ' · Tracking paused' : ''}`}
-      </p>
+      <div className="time-summary-filters">
+        <div>
+          <label htmlFor="time-summary-day">Day</label>
+          <select id="time-summary-day" value={pickedDay} onChange={(e) => { setPickedDay(e.target.value); setCopied(false); }}>
+            <option value="">Today</option>
+            {days.filter((date) => date !== today).map((date) => (
+              <option key={date} value={date}>
+                {new Date(date + 'T00:00:00').toLocaleDateString(undefined, { dateStyle: 'full' })}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="time-summary-customer">Customer</label>
+          <select id="time-summary-customer" value={customerId} onChange={(e) => { setCustomerId(e.target.value); setCopied(false); }}>
+            <option value="">All customers</option>
+            {[...customerNames].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {rows.length === 0 && (
+        <p className="time-summary-lead">
+          {customerId ? 'No time logged for this customer on this day.' : 'No time logged on this day.'}
+        </p>
+      )}
 
       {rows.length > 0 && (
         <>
@@ -174,13 +211,13 @@ export function TimeSummaryDialog({
             <button
               type="button"
               className="crm-secondary"
-              onClick={() => { if (window.confirm('Clear all logged time? This cannot be undone.')) onClear(); }}
+              onClick={clearHistory}
             >
-              Clear log
+              Clear all history
             </button>
           </>
         )}
-        {state.paused && (
+        {state.paused && onResume && (
           <button type="button" className="crm-primary" onClick={() => { onResume(); close(); }}>Resume tracking</button>
         )}
       </div>

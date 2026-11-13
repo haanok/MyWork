@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toISODate } from './dates';
 
 /** One continuous stretch of time with a customer open. `end` is the last time it was seen running. */
 export interface TimeSegment {
@@ -53,7 +54,7 @@ function stop(state: TrackerState, now: number): TrackerState {
   if (!state.running) return state;
   const segments = state.segments.slice();
   const last = segments[segments.length - 1];
-  segments[segments.length - 1] = { ...last, end: now };
+  segments[segments.length - 1] = { ...last, end: segmentEnd(state, segments.length - 1, now) };
   return { ...state, running: false, segments };
 }
 
@@ -121,24 +122,54 @@ export function useTimeTracker(enabled: boolean, customerId: string | null) {
 
   const pause = useCallback(() => setState((current) => ({ ...stop(current, Date.now()), paused: true })), []);
   const resume = useCallback(() => setState((current) => ({ ...current, paused: false })), []);
-  const clear = useCallback(() => setState((current) => ({ ...stop(current, Date.now()), segments: [] })), []);
+  const clear = useCallback(() => setState((current) => {
+    const now = Date.now();
+    const last = current.segments.at(-1);
+    return { ...current, segments: current.running && last ? [{ ...last, start: now, end: now }] : [] };
+  }), []);
 
   return { state, pause, resume, clear };
 }
 
-/** Duration of a segment, counting a running one up to `now`. */
-export function segmentMs(state: TrackerState, index: number, now: number): number {
-  const segment = state.segments[index];
-  const running = state.running && index === state.segments.length - 1;
-  return Math.max(0, (running ? now : segment.end) - segment.start);
+function segmentEnd(state: TrackerState, index: number, now: number): number {
+  const { end } = state.segments[index];
+  if (state.running && index === state.segments.length - 1 && now - end <= STALE_MS) {
+    return Math.max(end, now);
+  }
+  return end;
 }
 
-export function totalsByCustomer(state: TrackerState, now: number): Map<string, number> {
+function nextMidnight(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime();
+}
+
+export function dailyTotals(state: TrackerState, now: number, day: string): Map<string, number> {
+  const start = new Date(day + 'T00:00:00');
+  const end = nextMidnight(start);
   const totals = new Map<string, number>();
   state.segments.forEach((segment, index) => {
-    totals.set(segment.customerId, (totals.get(segment.customerId) ?? 0) + segmentMs(state, index, now));
+    const ms = Math.min(end, segmentEnd(state, index, now)) - Math.max(start.getTime(), segment.start);
+    if (ms > 0) totals.set(segment.customerId, (totals.get(segment.customerId) ?? 0) + ms);
   });
   return totals;
+}
+
+/** Local dates touched by a saved interval, including days between its endpoints. */
+export function loggedDays(state: TrackerState): string[] {
+  const days = new Set<string>();
+  for (const segment of state.segments) {
+    if (segment.start >= segment.end) continue;
+    const day = new Date(segment.start);
+    day.setHours(0, 0, 0, 0);
+    while (day.getTime() < segment.end) {
+      days.add(toISODate(day));
+      day.setDate(day.getDate() + 1);
+    }
+  }
+  // The first checkpoint of a new segment may fall on the following day.
+  const last = state.segments.at(-1);
+  if (state.running && last) days.add(toISODate(new Date(last.start)));
+  return [...days].sort().reverse();
 }
 
 /** 1:05:09 */
@@ -152,6 +183,7 @@ export function formatClock(ms: number): string {
 
 /** 1 h 05 min, 12 min, < 1 min */
 export function formatDuration(ms: number): string {
+  if (ms === 0) return '0 min';
   const minutes = Math.round(ms / 60_000);
   if (minutes < 1) return '< 1 min';
   const h = Math.floor(minutes / 60);
@@ -164,14 +196,24 @@ export function formatHours(ms: number): string {
   return (Math.round((ms / 3_600_000) * 4) / 4).toFixed(2);
 }
 
-/** Re-renders every `interval` ms while `active`. */
-export function useNow(active: boolean, interval = 1000): number {
+/** Paused views still advance to the new local day at midnight or on return to the tab. */
+export function useNow(running: boolean): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!active) return;
-    setNow(Date.now());
-    const timer = window.setInterval(() => setNow(Date.now()), interval);
-    return () => window.clearInterval(timer);
-  }, [active, interval]);
+    let timer: number;
+    const tick = () => {
+      window.clearTimeout(timer);
+      const timestamp = Date.now();
+      setNow(timestamp);
+      const untilMidnight = nextMidnight(new Date(timestamp)) - timestamp;
+      timer = window.setTimeout(tick, running ? Math.min(1000, untilMidnight) : untilMidnight);
+    };
+    tick();
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [running]);
   return now;
 }

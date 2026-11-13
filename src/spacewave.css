@@ -1038,6 +1038,20 @@ button {
   text-transform: capitalize;
 }
 
+.customer-nav-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 3px;
+  color: var(--space-muted);
+  font-size: 0.74rem;
+}
+
+.customer-nav-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .customer-nav-count {
   display: grid;
   min-width: 22px;
@@ -3036,6 +3050,36 @@ kbd {
 
 .time-summary-dialog {
   width: min(520px, calc(100vw - 32px));
+}
+
+.time-summary-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+
+.time-summary-filters > div {
+  display: grid;
+  gap: 4px;
+  color: var(--space-muted);
+  font-size: 0.78rem;
+}
+
+.time-summary-filters select {
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 6px;
+  border: 1px solid var(--space-line);
+  border-radius: var(--space-radius);
+  background: var(--space-base);
+  color: var(--space-fg);
+}
+
+@media (max-width: 480px) {
+  .time-summary-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 .import-dialog .time-summary-lead {
