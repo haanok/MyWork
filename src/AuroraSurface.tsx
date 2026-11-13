@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPixelScene, type PixelScene } from './pixelScene';
 
 /** Curtain layers: each is a ribbon of vertical rays hanging from a slowly bending lower edge. */
 const CURTAINS = [
@@ -9,7 +10,7 @@ const CURTAINS = [
 
 /** Internal resolution divisor: the canvas is upscaled by CSS, which softens the rays for free. */
 const SCALE = 4;
-type AuroraVariant = 'vivicta' | 'porcelain-light' | 'porcelain-dark';
+type AuroraVariant = 'vivicta' | 'vivicta-pixel' | 'porcelain-light' | 'porcelain-dark';
 
 function raySprite(stops: Array<[number, string]>): HTMLCanvasElement {
   const sprite = document.createElement('canvas');
@@ -55,9 +56,14 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
     let frame = 0;
     let lastDraw = 0;
     let time = 37;
+    let scene: PixelScene | null = null;
 
     const draw = () => {
       if (width <= 0 || height <= 0) return;
+      if (variant === 'vivicta-pixel') {
+        scene?.draw(context, time);
+        return;
+      }
       context.clearRect(0, 0, width, height);
       if (variant !== 'vivicta') {
         const dark = variant === 'porcelain-dark';
@@ -145,7 +151,7 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
       if (document.hidden) return;
       if (now - lastDraw >= 42) {
         const elapsed = Math.min((now - lastDraw) / 1000, 0.08);
-        time += reduced.matches ? 0 : elapsed * (variant === 'vivicta' ? 1 : 1.45);
+        time += reduced.matches ? 0 : elapsed * (variant === 'vivicta' || variant === 'vivicta-pixel' ? 1 : 1.45);
         draw();
         lastDraw = now;
       }
@@ -155,10 +161,18 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
       if (!frame && !document.hidden && !reduced.matches) frame = requestAnimationFrame(render);
     };
     const resize = () => {
-      width = Math.max(1, Math.round(stage.clientWidth / SCALE));
-      height = Math.max(1, Math.round(stage.clientHeight / SCALE));
+      const pixel = variant === 'vivicta-pixel';
+      const round = pixel ? Math.ceil : Math.round;
+      width = Math.max(1, round(stage.clientWidth / SCALE));
+      height = Math.max(1, round(stage.clientHeight / SCALE));
       canvas.width = width;
       canvas.height = height;
+      if (pixel) {
+        // An exact 4x upscale keeps every art pixel the same size on screen.
+        canvas.style.width = `${width * SCALE}px`;
+        canvas.style.height = `${height * SCALE}px`;
+        scene = createPixelScene(width, height);
+      }
       draw();
     };
     const onMotionChange = () => {

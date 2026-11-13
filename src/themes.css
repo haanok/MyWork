@@ -625,6 +625,313 @@
   background-image: none;
 }
 
+/* ------------------------------------------------------------------ */
+/* Vivicta Pixel: Vivicta's palette as a hand-placed pixel night valley. */
+/* Every art pixel is 4 CSS px; shadows drop straight down like sprites. */
+/* ------------------------------------------------------------------ */
+
+.app[data-art-style='pixel'] {
+  --space-radius: 0;
+  --pixel-font: 'Pixelify Sans', var(--sans);
+  --pixel-frame: #1f3a52;
+  --pixel-drop: #01040a;
+}
+
+.app[data-art-style='pixel'] ::selection {
+  color: #03140f;
+  background: #62efb8;
+}
+
+.app[data-art-style='pixel'] :is(.wordmark, .rail-heading h2, .context-heading h3, .task-queue-head h3, .composer-heading h3, .data-menu-heading, .customer-name-input, .record-title-block h2) {
+  font-family: var(--pixel-font);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.app[data-art-style='pixel'] .wordmark {
+  font-size: 1.2rem;
+  color: #d6ffef;
+}
+
+.app[data-art-style='pixel'] .deck {
+  border-bottom: 2px solid var(--pixel-frame);
+  box-shadow: 0 2px 0 var(--pixel-drop);
+}
+
+.app[data-art-style='pixel'] :is(button, input, select, textarea, .search, .task-composer, .priority-control, .task-filters, .data-menu-list, .task-customer) {
+  border-radius: 0;
+}
+
+.app[data-art-style='pixel'] :is(.key, .crm-secondary, .search, .crm-field, .short-name-input, .quick-add-input, .task-status-select, .customer-status-control select) {
+  border-width: 2px;
+}
+
+.app[data-art-style='pixel'] .crm-primary {
+  border-width: 2px;
+  border-color: #9cf7d3;
+  box-shadow: 0 3px 0 #0a3a2c;
+  font-family: var(--pixel-font);
+  font-weight: 600;
+  transition: transform 80ms steps(2, end), box-shadow 80ms steps(2, end), background-color 80ms;
+}
+
+.app[data-art-style='pixel'] .crm-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 #0a3a2c;
+}
+
+.app[data-art-style='pixel'] .crm-primary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #0a3a2c;
+}
+
+.app[data-art-style='pixel'] .crm-primary:disabled {
+  box-shadow: none;
+}
+
+.app[data-art-style='pixel'] .key:active,
+.app[data-art-style='pixel'] .crm-secondary:active {
+  transform: translateY(1px);
+}
+
+.app[data-art-style='pixel'] :is(.contact-avatar, .record-mark, .customer-mark, .empty-mark) {
+  border-width: 2px;
+  border-radius: 0;
+  font-family: var(--pixel-font);
+}
+
+.app[data-art-style='pixel'] :is(.customer-nav-count, .today-key-count) {
+  border-radius: 0;
+  font-family: var(--pixel-font);
+}
+
+.app[data-art-style='pixel'] :is(.customer-rail, .context-rail) {
+  border-color: var(--pixel-frame);
+  border-width: 2px;
+}
+
+.app[data-art-style='pixel'] .task-composer {
+  border: 2px solid var(--pixel-frame);
+  box-shadow: inset 0 2px 0 rgb(98 239 184 / 10%), 0 3px 0 var(--pixel-drop);
+}
+
+.app[data-art-style='pixel'] :is(.task-filters, .priority-control) {
+  border-width: 2px;
+}
+
+.app[data-art-style='pixel'] :is(.task-filters button.is-active, .task-filters button[aria-pressed='true'], .priority-control button.is-active) {
+  border-radius: 0;
+  box-shadow: inset 0 -2px 0 var(--space-cyan);
+}
+
+.app[data-art-style='pixel'] .task-entry {
+  border-bottom: 2px dashed rgb(31 58 82 / 75%);
+}
+
+.app[data-art-style='pixel'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .toast) {
+  border: 2px solid var(--pixel-frame);
+  background: #071321;
+  box-shadow: inset 0 2px 0 rgb(98 239 184 / 10%), 0 4px 0 var(--pixel-drop);
+}
+
+.app[data-art-style='pixel'] .theme-swatch {
+  border-radius: 0;
+}
+
+/* Map stage: the canvas paints the whole valley, so the CSS star field steps aside. */
+.stage[data-art-style='pixel'] {
+  overflow: hidden;
+  background: #03060d;
+  --px-circle: polygon(25% 0, 75% 0, 75% 12.5%, 87.5% 12.5%, 87.5% 25%, 100% 25%, 100% 75%, 87.5% 75%, 87.5% 87.5%, 75% 87.5%, 75% 100%, 25% 100%, 25% 87.5%, 12.5% 87.5%, 12.5% 75%, 0 75%, 0 25%, 12.5% 25%, 12.5% 12.5%, 25% 12.5%);
+}
+
+.stage[data-art-style='pixel']::before {
+  display: none;
+}
+
+.stage[data-art-style='pixel'] .aurora-sky {
+  right: auto;
+  bottom: auto;
+  filter: none;
+  opacity: 1;
+  mix-blend-mode: normal;
+  image-rendering: pixelated;
+}
+
+.stage[data-art-style='pixel'] .map {
+  background: transparent;
+}
+
+/* Customers as pixel orbs: an outline shape and an inset fill, both stepped. */
+.stage[data-art-style='pixel'] .orb .lamp {
+  --px-edge: #62efb8;
+  --px-hi: #1f6a52;
+  --px-mid: #123d31;
+  --px-low: #0a251e;
+  --px-shine: #bff7de;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #eafff6;
+  box-shadow: none;
+  backdrop-filter: none;
+  filter: drop-shadow(0 4px 0 rgb(1 4 10 / 75%));
+  transition: transform 90ms steps(2, end), opacity 180ms;
+}
+
+.stage[data-art-style='pixel'] .orb .lamp::before,
+.stage[data-art-style='pixel'] .orb .lamp::after {
+  content: '';
+  position: absolute;
+  clip-path: var(--px-circle);
+  pointer-events: none;
+}
+
+.stage[data-art-style='pixel'] .orb .lamp::before {
+  inset: 0;
+  background: var(--px-edge);
+}
+
+.stage[data-art-style='pixel'] .orb .lamp::after {
+  inset: 3px;
+  background:
+    linear-gradient(var(--px-shine) 0 0) 26% 20% / 16% 8% no-repeat,
+    linear-gradient(var(--px-shine) 0 0) 22% 30% / 8% 10% no-repeat,
+    linear-gradient(180deg, var(--px-hi) 0 34%, var(--px-mid) 34% 74%, var(--px-low) 74%);
+}
+
+.stage[data-art-style='pixel'] .orb .lamp > * {
+  position: relative;
+  z-index: 1;
+}
+
+.stage[data-art-style='pixel'] .lamp-count {
+  font-family: var(--pixel-font);
+  font-weight: 600;
+  text-shadow: 0 2px 0 rgb(1 4 10 / 70%);
+}
+
+.stage[data-art-style='pixel'] .lamp-doing .lamp {
+  --px-edge: #b7a2ff;
+  --px-hi: #3d3170;
+  --px-mid: #281f4d;
+  --px-low: #181232;
+  --px-shine: #e3dbff;
+}
+
+.stage[data-art-style='pixel'] .lamp-overdue .lamp {
+  --px-edge: #ff8fab;
+  --px-hi: #74283e;
+  --px-mid: #4a1828;
+  --px-low: #2c0e18;
+  --px-shine: #ffd3de;
+}
+
+.stage[data-art-style='pixel'] .lamp-clear .lamp {
+  --px-edge: #9cd3ff;
+  --px-hi: #1f3d59;
+  --px-mid: #14283d;
+  --px-low: #0c1828;
+  --px-shine: #d6ecff;
+  color: #d6ecff;
+}
+
+.stage[data-art-style='pixel'] .orb .lamp:hover {
+  transform: translateY(-4px);
+}
+
+.stage[data-art-style='pixel'] .is-muted .lamp:hover {
+  transform: scale(0.8) translateY(-4px);
+}
+
+.stage[data-art-style='pixel'] .orb .lamp:focus-visible {
+  outline: 2px dashed var(--px-edge);
+  outline-offset: 4px;
+}
+
+.stage[data-art-style='pixel'] .is-selected .lamp {
+  outline: 2px dashed #eaf5f3;
+  outline-offset: 5px;
+}
+
+.stage[data-art-style='pixel'] .strip {
+  padding: 2px 7px 3px;
+  border: 2px solid var(--pixel-frame);
+  border-radius: 0;
+  background: #071321;
+  box-shadow: 0 2px 0 var(--pixel-drop);
+  backdrop-filter: none;
+  font-family: var(--pixel-font);
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.stage[data-art-style='pixel'] .orb-add-task {
+  border: 2px solid #62efb8;
+  border-radius: 0;
+  background: #0b2a22;
+  color: #bff7de;
+  box-shadow: 0 2px 0 var(--pixel-drop);
+}
+
+.stage[data-art-style='pixel'] .orb-add-task:hover {
+  background: #123d31;
+  color: #eafff6;
+}
+
+.stage[data-art-style='pixel'] .legend {
+  right: auto;
+  width: max-content;
+  max-width: calc(100% - 44px);
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 6px 10px;
+  border: 2px solid var(--pixel-frame);
+  background: rgb(4 9 16 / 90%);
+  box-shadow: 0 2px 0 var(--pixel-drop);
+  color: #c1d5df;
+  font-family: var(--pixel-font);
+  font-size: 0.84rem;
+}
+
+.stage[data-art-style='pixel'] .pip {
+  border-radius: 0;
+}
+
+.stage[data-art-style='pixel'] :is(.socket, .empty-orb) {
+  border: 2px dashed #62efb8;
+  border-radius: 0;
+  background: #071321;
+  box-shadow: 0 4px 0 var(--pixel-drop);
+  font-family: var(--pixel-font);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage[data-art-style='pixel'] .orb .lamp:hover,
+  .app[data-art-style='pixel'] .crm-primary:is(:hover, :active) {
+    transform: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .stage[data-art-style='pixel'] .legend {
+    gap: 4px 10px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+  }
+}
+
+.theme-swatch-vivicta-pixel {
+  border-color: #62efb8;
+  border-radius: 0;
+  background:
+    linear-gradient(#62efb8 0 0) 0 30% / 100% 22% no-repeat,
+    linear-gradient(#b7a2ff 0 0) 0 8% / 100% 14% no-repeat,
+    linear-gradient(#081020 0 0) 0 100% / 100% 34% no-repeat,
+    #03060d;
+}
+
 .app[data-home-theme='paper'] .theme-swatch:not(.theme-swatch-paper) {
   border-color: rgb(31 27 22 / 18%);
 }
