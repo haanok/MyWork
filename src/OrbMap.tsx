@@ -68,7 +68,7 @@ export function OrbMap({
 
   const focusTasks = useMemo(() => {
     if (!selectedId || compact) return [];
-    const rank = { doing: 0, open: 1, done: 2 } as const;
+    const rank = { doing: 0, open: 1, waiting: 2, done: 3 } as const;
     return tasks
       .filter((t) => t.customerId === selectedId && t.status !== 'done')
       .sort((a, b) => rank[a.status] - rank[b.status] || (a.due ?? '9').localeCompare(b.due ?? '9'));

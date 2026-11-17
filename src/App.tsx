@@ -11,6 +11,8 @@ import { ToastStack, useToastStack } from './ToastStack';
 import { savedTimeTrackingEnabled, TIME_TRACKING_ENABLED_KEY, useTimeTracker } from './timeTracking';
 import { OrbMap } from './OrbMap';
 import { TodayView } from './TodayView';
+import { todayTasks } from './taskPlanning';
+import { useToday } from './useToday';
 import { isMac, QUICK_ADD_KEYS, QuickAddDialog } from './QuickAdd';
 import { rankCustomers } from './quickAddParse';
 import { sampleData } from './sample';
@@ -30,7 +32,7 @@ function useCompact() {
   return compact;
 }
 
-const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
+const NEXT_STATUS = { open: 'doing', doing: 'done', waiting: 'doing', done: 'open' } as const;
 const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'vivicta-pixel', 'porcelain', 'porcelain-dark'] as const;
 const MAP_CENTER_DRIFT_KEY = 'mywork-map-center-drift';
 const WORKSPACE_LAYOUT_KEY = 'mywork-workspace-layout';
@@ -80,6 +82,7 @@ export default function App() {
   const sourceLabel = import.meta.env.DEV ? 'Local preview' : 'Server';
   const { data, ready, undo, loadFailed, storageError, actions, hasUnsavedChanges } = useBoard(adapter);
   const compact = useCompact();
+  const day = useToday();
   const [homeTheme, setHomeTheme] = useState<HomeTheme>(savedHomeTheme);
   const [centerBubbles, setCenterBubbles] = useState(savedCenterDrift);
   const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>(savedWorkspaceLayout);
@@ -255,18 +258,16 @@ export default function App() {
 
   const tally = useMemo(() => {
     const live = new Set(data.customers.filter((c) => c.status !== 'archived').map((c) => c.id));
-    const t0 = today();
+    const t0 = day;
     let open = 0;
     let overdue = 0;
-    let dueToday = 0;
     for (const t of data.tasks) {
       if (t.status === 'done' || !live.has(t.customerId)) continue;
       open += 1;
       if (t.due && t.due < t0) overdue += 1;
-      else if (t.due === t0) dueToday += 1;
     }
-    return { customers: live.size, open, overdue, dueToday };
-  }, [data]);
+    return { customers: live.size, open, overdue, today: todayTasks(data.customers, data.tasks, t0).pending.length };
+  }, [data, day]);
 
   // In a customer's workspace the search narrows the customer list.
   const listed = useMemo(() => {
@@ -404,12 +405,12 @@ export default function App() {
               className="key today-key"
               aria-pressed={view === 'today'}
               onClick={() => setView((v) => (v === 'today' ? 'map' : 'today'))}
-              title="Overdue and due-today tasks across all customers"
+              title="Deadlines, planned work and follow-ups across all customers"
             >
               <IconCalendar width={15} height={15} />
               Today
-              {tally.overdue + tally.dueToday > 0 && (
-                <span className={`num today-key-count${tally.overdue > 0 ? ' is-alert' : ''}`}>{tally.overdue + tally.dueToday}</span>
+              {tally.today > 0 && (
+                <span className={`num today-key-count${tally.overdue > 0 ? ' is-alert' : ''}`}>{tally.today}</span>
               )}
             </button>
           )}

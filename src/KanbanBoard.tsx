@@ -4,7 +4,7 @@ import { IconFlag, IconPlus } from './icons';
 import { STATUS_LABEL, TASK_DRAG_TYPE, TaskEntry } from './TaskEntry';
 import type { Priority, Task, TaskStatus } from './types';
 
-const COLUMNS: TaskStatus[] = ['open', 'doing', 'done'];
+const COLUMNS: TaskStatus[] = ['open', 'doing', 'waiting', 'done'];
 
 interface Props {
   tasks: Task[];
@@ -24,13 +24,13 @@ function sortColumn(status: TaskStatus, list: Task[]) {
   });
 }
 
-/** Tasks for one customer as three status columns. Cards are dragged between columns to change status. */
+/** Tasks for one customer grouped by status. Cards can be dragged between columns. */
 export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask }: Props) {
   const [dropTarget, setDropTarget] = useState<TaskStatus | null>(null);
   const [composerFor, setComposerFor] = useState<TaskStatus | null>(null);
 
   const columns = useMemo(() => {
-    const grouped: Record<TaskStatus, Task[]> = { open: [], doing: [], done: [] };
+    const grouped: Record<TaskStatus, Task[]> = { open: [], doing: [], waiting: [], done: [] };
     for (const task of tasks) grouped[task.status]?.push(task);
     for (const status of COLUMNS) grouped[status] = sortColumn(status, grouped[status]);
     return grouped;

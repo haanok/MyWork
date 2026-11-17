@@ -507,3 +507,47 @@ test('MCP is off without MCP_CLIENT_ID', async () => {
     plain.child.kill();
   }
 });
+
+test('MCP and web round-trip customer handovers, waiting details and independent plans', async () => {
+  const customer = (await call('add_customer', { name: 'Planning Synthetic AS', nextStep: 'Resume VPN checks' })).value;
+  assert.equal(customer.nextStep, 'Resume VPN checks');
+  const task = (await call('add_task', {
+    customer: customer.id, title: 'Test access', status: 'waiting', waitingFor: 'Synthetic contact',
+    followUp: '2026-11-17', plannedFor: '2026-11-17', due: '2026-12-01',
+  })).value;
+  assert.equal(task.status, 'waiting');
+  assert.equal(task.waitingFor, 'Synthetic contact');
+  assert.equal(task.followUp, '2026-11-17');
+  assert.equal(task.plannedFor, '2026-11-17');
+  assert.equal(task.due, '2026-12-01');
+  assert.equal(task.doneAt, undefined);
+  assert.deepEqual((await call('list_tasks', { customer: customer.id, status: 'waiting', follow_up_before: '2026-11-17' })).value.map((t) => t.id), [task.id]);
+  assert.deepEqual((await call('list_tasks', { customer: customer.id, planned_before: '2026-11-18' })).value.map((t) => t.id), [task.id]);
+  assert.deepEqual((await call('list_tasks', { customer: customer.id, follow_up_before: '2026-11-16' })).value, []);
+  assert.ok((await call('search', { query: 'resume vpn' })).value.customers.some((c) => c.id === customer.id));
+  assert.ok((await call('search', { query: 'synthetic contact' })).value.tasks.some((t) => t.id === task.id));
+
+  const token = await sign({}, { sub: MCP_SUB });
+  const loaded = await request('GET', '/api/data', { token });
+  const data = JSON.parse(loaded.body);
+  const webTask = data.tasks.find((t) => t.id === task.id);
+  assert.equal(webTask.followUp, task.followUp);
+  assert.equal(data.customers.find((c) => c.id === customer.id).nextStep, customer.nextStep);
+  webTask.plannedFor = '2026-11-18';
+  const saved = await request('PUT', '/api/data', { token, body: JSON.stringify(data), headers: { 'If-Match': loaded.headers.etag } });
+  assert.equal(saved.status, 204);
+  const detail = (await call('get_customer', { customer: customer.id })).value;
+  assert.equal(detail.tasks[0].plannedFor, '2026-11-18');
+  assert.equal(detail.tasks[0].due, '2026-12-01');
+
+  const cleared = (await call('update_task', { task_id: task.id, status: 'doing', plannedFor: '', waitingFor: '', followUp: '' })).value;
+  assert.equal(cleared.plannedFor, undefined);
+  assert.equal(cleared.waitingFor, undefined);
+  assert.equal(cleared.followUp, undefined);
+  assert.equal(cleared.due, '2026-12-01');
+  assert.deepEqual((await call('list_tasks', { customer: customer.id, follow_up_before: '2026-12-01' })).value, []);
+  await call('update_customer', { customer: customer.id, nextStep: 'Check home access' });
+  assert.equal((await call('get_customer', { customer: customer.id })).value.nextStep, 'Check home access');
+  await call('update_customer', { customer: customer.id, nextStep: '' });
+  assert.equal((await call('get_customer', { customer: customer.id })).value.nextStep, undefined);
+});

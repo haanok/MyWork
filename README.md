@@ -16,6 +16,27 @@ Build the web app with `npm run build`. In `npm run dev` the board is stored
 in localStorage. Environment files and `current.json` are intentionally
 excluded from Git and the container build context.
 
+Run `npm test` for day-planning and concurrent-merge checks (Node.js 24+),
+and `cd server && npm test` for API and MCP integration tests.
+
+## Daily workflow
+
+- **Continue here:** an autosaved handover note at the top of each customer,
+  available in both List and Board layouts.
+- **Waiting on:** a task status with **Waiting for** and **Follow up** fields
+  in the task editor. Waiting tasks have their own board column and appear
+  under **Waiting & follow-ups** in Today when a deadline, plan, or follow-up
+  is due. Change status when the task is unblocked, or move its follow-up date.
+- **Plan today:** choose tasks in Today, or use **Plan for today** on a task.
+  **Planned for** in the editor also accepts a future workday. Plans are
+  independent of deadlines; unfinished plans carry forward until completed,
+  rescheduled or removed. Removing a plan does not hide a due deadline or
+  follow-up. Tasks completed today stay visible even without a deadline.
+
+These fields are stored with the board, included in JSON import/export, and
+readable and editable through MCP (`nextStep` on customers; `waiting` status,
+`waitingFor`, `followUp`, and `plannedFor` on tasks). Older boards need no migration.
+
 ## Container Registry
 
 GitHub Actions builds `ghcr.io/haanok/mywork-selfhost` from

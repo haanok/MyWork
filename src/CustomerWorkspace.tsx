@@ -130,6 +130,7 @@ export function CustomerWorkspace({
   const openCount = customerTasks.filter((task) => task.status !== 'done').length;
   const overdueCount = customerTasks.filter((task) => task.status !== 'done' && task.due && task.due < today()).length;
   const doneCount = customerTasks.filter((task) => task.status === 'done').length;
+  const waitingCount = customerTasks.filter((task) => task.status === 'waiting').length;
 
   const orderedTasks = useMemo(() => {
     const filtered = customerTasks.filter((task) => {
@@ -237,8 +238,21 @@ export function CustomerWorkspace({
           </div>
         </header>
 
+        <section className="customer-next-step" aria-labelledby="next-step-label">
+          <label id="next-step-label" htmlFor="customer-next-step">Continue here</label>
+          <textarea
+            id="customer-next-step"
+            className="crm-field"
+            rows={2}
+            value={customer.nextStep ?? ''}
+            placeholder="Where you left off and what to do next"
+            onChange={(event) => onUpdateCustomer({ nextStep: event.target.value })}
+          />
+        </section>
+
         <div className="queue-summary" aria-label="Task summary">
           <span><b>{openCount}</b> open</span>
+          {waitingCount > 0 && <span><b>{waitingCount}</b> waiting</span>}
           <span className={overdueCount > 0 ? 'summary-alert' : ''}><b>{overdueCount}</b> overdue</span>
           <span><b>{doneCount}</b> completed</span>
         </div>

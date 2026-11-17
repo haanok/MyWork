@@ -1160,6 +1160,7 @@ button {
 
 .queue-summary {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   padding: 13px 0 15px;
   color: var(--space-muted);
@@ -1475,6 +1476,72 @@ button {
   align-items: center;
   gap: 6px 16px;
   margin-top: 7px;
+}
+
+.customer-next-step {
+  margin-top: 16px;
+}
+
+.customer-next-step label,
+.planning-field > span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--space-fg);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.customer-next-step textarea {
+  display: block;
+  resize: vertical;
+}
+
+.planning-field {
+  min-width: 0;
+}
+
+.planning-field small {
+  display: block;
+  margin-top: 4px;
+  color: var(--space-muted);
+  font-size: 0.75rem;
+}
+
+.task-waiting-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 10px;
+}
+
+.task-waiting-info {
+  margin-top: 10px;
+  color: var(--space-muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.task-waiting-info p {
+  margin: 3px 0;
+}
+
+.task-waiting-info strong {
+  color: var(--space-fg);
+  font-weight: 600;
+}
+
+.task-waiting-info .follow-up-due,
+.task-date .task-plan-note {
+  color: var(--space-cyan);
+}
+
+.task-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-status-select.st-waiting {
+  border-color: var(--space-muted);
+  color: var(--space-fg);
 }
 
 .task-controls {
@@ -2282,6 +2349,7 @@ button {
   }
 
   .record-head { order: 0; }
+  .customer-next-step { order: 0; }
   .queue-summary { order: 1; }
   .task-queue-head { order: 2; }
   .task-list { order: 3; }
@@ -2617,6 +2685,69 @@ kbd {
   width: min(100%, 920px);
 }
 
+.today-main .queue-summary {
+  order: 0;
+}
+
+.today-planner {
+  margin-top: 16px;
+  padding-block: 14px;
+  border-block: 1px solid var(--space-line);
+}
+
+.today-planner h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.today-planner p {
+  margin: 6px 0 12px;
+  color: var(--space-muted);
+  font-size: 0.85rem;
+}
+
+.today-plan-options {
+  max-height: 280px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.today-plan-options li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 10px;
+  border-bottom: 1px solid var(--space-line);
+}
+
+.today-plan-options li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.today-plan-options strong,
+.today-plan-options span {
+  display: block;
+}
+
+.today-plan-options strong {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.today-plan-options span {
+  margin-top: 3px;
+  color: var(--space-muted);
+  font-size: 0.78rem;
+}
+
+.today-plan-options button {
+  flex-shrink: 0;
+}
+
 .today-section .task-queue-head {
   min-height: 44px;
 }
@@ -2793,7 +2924,7 @@ kbd {
   display: grid;
   flex: 1;
   min-height: 12rem;
-  grid-template-columns: repeat(3, minmax(250px, 1fr));
+  grid-template-columns: repeat(4, minmax(280px, 1fr));
   grid-template-rows: minmax(0, 1fr);
   align-items: start;
   gap: 14px;
@@ -2963,7 +3094,7 @@ kbd {
 }
 
 .task-entry.is-card .task-date {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 2;
   flex-direction: row;
   flex-wrap: wrap;
@@ -2981,8 +3112,8 @@ kbd {
 }
 
 .task-entry.is-card .task-controls {
-  grid-column: 2;
-  grid-row: 2;
+  grid-column: 1 / -1;
+  grid-row: 3;
   gap: 2px;
 }
 
