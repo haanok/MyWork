@@ -3,7 +3,6 @@ import { today, toISODate, uid } from './dates';
 import { IconFlag, IconPlus, IconTrash } from './icons';
 import { KanbanBoard } from './KanbanBoard';
 import { dailyTotals, formatDuration, useNow, type useTimeTracker } from './timeTracking';
-import { TimeTrackerPanel } from './TimeTracker';
 import { TaskEntry } from './TaskEntry';
 import type { Customer, CustomerStatus, Priority, Task, TaskStatus } from './types';
 
@@ -19,7 +18,6 @@ interface Props {
   layout: WorkspaceLayout;
   onLayoutChange: (layout: WorkspaceLayout) => void;
   tracker?: ReturnType<typeof useTimeTracker>;
-  onShowSummary: () => void;
   onSelectCustomer: (id: string) => void;
   onAddCustomer: () => void;
   onUpdateCustomer: (patch: Partial<Customer>) => void;
@@ -39,8 +37,8 @@ const CUSTOMER_STATUS_LABEL: Record<CustomerStatus, string> = {
 };
 
 function CustomerRail({
-  customer, customers, tasks, tracker, onAddCustomer, onSelectCustomer, onShowSummary,
-}: Pick<Props, 'customer' | 'customers' | 'tasks' | 'tracker' | 'onAddCustomer' | 'onSelectCustomer' | 'onShowSummary'>) {
+  customer, customers, tasks, tracker, onAddCustomer, onSelectCustomer,
+}: Pick<Props, 'customer' | 'customers' | 'tasks' | 'tracker' | 'onAddCustomer' | 'onSelectCustomer'>) {
   const now = useNow(tracker?.state.running ?? false);
   const totals = tracker ? dailyTotals(tracker.state, now, toISODate(new Date(now))) : new Map<string, number>();
   return (
@@ -84,16 +82,6 @@ function CustomerRail({
           );
         })}
       </nav>
-      {tracker && (
-        <TimeTrackerPanel
-          state={tracker.state}
-          customer={customer}
-          totals={totals}
-          onPause={tracker.pause}
-          onResume={tracker.resume}
-          onShowSummary={onShowSummary}
-        />
-      )}
     </aside>
   );
 }
@@ -107,7 +95,6 @@ export function CustomerWorkspace({
   layout,
   onLayoutChange,
   tracker,
-  onShowSummary,
   onSelectCustomer,
   onAddCustomer,
   onUpdateCustomer,
@@ -178,7 +165,6 @@ export function CustomerWorkspace({
         tracker={tracker}
         onAddCustomer={onAddCustomer}
         onSelectCustomer={onSelectCustomer}
-        onShowSummary={onShowSummary}
       />
 
       <section className="crm-main" aria-label={`${customer.name} task queue`}>

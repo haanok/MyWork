@@ -6,7 +6,7 @@ import { today } from './dates';
 import { fetchMcpInfo, type McpInfo } from './api';
 import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
 import { McpConnectDialog } from './McpConnect';
-import { TimeSummaryDialog } from './TimeTracker';
+import { TimeSummaryDialog, TimeTrackerPanel } from './TimeTracker';
 import { savedTimeTrackingEnabled, TIME_TRACKING_ENABLED_KEY, useTimeTracker } from './timeTracking';
 import { OrbMap } from './OrbMap';
 import { TodayView } from './TodayView';
@@ -327,7 +327,7 @@ export default function App() {
       data-home-theme={homeTheme === 'vivicta-pixel' ? 'vivicta' : homeTheme}
       data-art-style={homeTheme === 'vivicta-pixel' ? 'pixel' : undefined}
     >
-      <header className={`deck${selected ? ' deck-record' : ''}`}>
+      <header className={`deck${selected ? ' deck-record' : ''}${selected && timeTrackingEnabled ? ' has-time-island' : ''}`}>
         {selected && (
           <button type="button" className="back-key" onClick={() => setSelectedId(null)}>
             <IconArrowLeft width={17} height={17} />
@@ -347,6 +347,16 @@ export default function App() {
             MyWork
           </button>
         </h1>
+
+        {selected && timeTrackingEnabled && (
+          <TimeTrackerPanel
+            state={tracker.state}
+            customer={selected}
+            onPause={tracker.pause}
+            onResume={tracker.resume}
+            onShowSummary={() => setShowTimeSummary(true)}
+          />
+        )}
 
         {!selected && <p className="tally" role="status">
           <span className="tally-item">
@@ -529,7 +539,6 @@ export default function App() {
             layout={workspaceLayout}
             onLayoutChange={setWorkspaceLayout}
             tracker={timeTrackingEnabled ? tracker : undefined}
-            onShowSummary={() => setShowTimeSummary(true)}
             onSelectCustomer={setSelectedId}
             onAddCustomer={addCustomer}
             onUpdateCustomer={(patch) => actions.updateCustomer(selected.id, patch)}
