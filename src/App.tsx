@@ -7,6 +7,7 @@ import { fetchMcpInfo, type McpInfo } from './api';
 import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
 import { McpConnectDialog } from './McpConnect';
 import { TimeSummaryDialog, TimeTrackerPanel } from './TimeTracker';
+import { ToastStack, useToastStack } from './ToastStack';
 import { savedTimeTrackingEnabled, TIME_TRACKING_ENABLED_KEY, useTimeTracker } from './timeTracking';
 import { OrbMap } from './OrbMap';
 import { TodayView } from './TodayView';
@@ -91,7 +92,7 @@ export default function App() {
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const { toasts, notify, dismiss: dismissToast } = useToastStack();
   const fileRef = useRef<HTMLInputElement>(null);
   const [mcpInfo, setMcpInfo] = useState<McpInfo | null>(null);
   const [showMcp, setShowMcp] = useState(false);
@@ -230,14 +231,22 @@ export default function App() {
   }, [dataMenuOpen]);
 
   useEffect(() => {
-    if (!notice) return;
-    const t = window.setTimeout(() => setNotice(null), 6000);
-    return () => window.clearTimeout(t);
-  }, [notice]);
+    if (storageError) notify({ kind: 'error', title: 'Storage notice', body: storageError });
+  }, [storageError, notify]);
 
   useEffect(() => {
-    if (storageError) setNotice(storageError);
-  }, [storageError]);
+    if (!undo) return;
+    // The store owns the eight-second undo window. Remove the card as soon
+    // as that snapshot expires or a newer undo operation replaces it.
+    const id = notify({
+      kind: undo.label.endsWith(' removed') ? 'removed' : 'info',
+      title: undo.label,
+      action: { label: 'Undo', onClick: actions.undo },
+      onDismiss: actions.dismissUndo,
+      duration: 0,
+    });
+    return () => dismissToast(id);
+  }, [undo, actions.undo, actions.dismissUndo, notify, dismissToast]);
 
   const visible = useMemo(
     () => data.customers.filter((c) => showArchived || c.status !== 'archived' || c.id === selectedId),
@@ -300,7 +309,7 @@ export default function App() {
       actions.importData(parseImport(await file.text()));
       setSelectedId(null);
     } catch {
-      setNotice('Import failed: choose a JSON file exported from this board.');
+      notify({ kind: 'error', title: 'Import failed', body: 'Choose a JSON file exported from this board.' });
     }
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -586,20 +595,7 @@ export default function App() {
         )}
       </main>
 
-      {(undo || notice) && (
-        <div className="toast" role="status">
-          <span>{notice ?? undo?.label}</span>
-          {undo && !notice ? (
-            <button type="button" className="text-key" onClick={actions.undo}>
-              Undo
-            </button>
-          ) : (
-            <button type="button" className="text-key" onClick={() => setNotice(null)}>
-              Dismiss
-            </button>
-          )}
-        </div>
-      )}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
       {showQuickAdd && (
         <QuickAddDialog
@@ -610,7 +606,7 @@ export default function App() {
           onAdd={(customerId, title, priority, due) => {
             actions.addTask(customerId, title, '', priority, due);
             const name = data.customers.find((c) => c.id === customerId)?.name ?? 'customer';
-            setNotice(`Task added to ${name}.`);
+            notify({ kind: 'success', title: 'Task added', body: `Added to ${name}.` });
           }}
         />
       )}

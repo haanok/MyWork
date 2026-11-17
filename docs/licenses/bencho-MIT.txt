@@ -1,5 +1,7 @@
 Bencho Dynamic island — src/DynamicIsland.tsx and the Dynamic island CSS
 in src/spacewave.css. Adapted for MyWork.
+Bencho Toast stack — src/ToastStack.tsx and the Toast stack CSS
+in src/spacewave.css. Adapted for MyWork.
 Source and licence: https://bencho.dev/licence
 
 MIT License
