@@ -1,242 +1,140 @@
+<div align="center">
+
+<img src="public/favicon.svg" alt="MyWork logo" width="96" height="96">
+
 # MyWork
 
-React/Vite customer workspace with a self-hosted Node backend (Pocket ID
-login, optional remote MCP for Claude).
+[![Build and publish container](https://github.com/haanok/MyWork/actions/workflows/container.yml/badge.svg)](https://github.com/haanok/MyWork/actions/workflows/container.yml)
+![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-3c873a?logo=node.js&logoColor=white)
+![React 19](https://img.shields.io/badge/react-19-61dafb?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/typescript-blue?logo=typescript&logoColor=white)
+[![MCP](https://img.shields.io/badge/MCP-remote%20server-8a63d2)](https://modelcontextprotocol.io)
 
-## Development
+A customer map for consultants who juggle many clients at once.
 
-Requires Node.js 24 and npm.
+[Features](#features) · [Getting started](#getting-started) · [Daily workflow](#daily-workflow) · [Self-hosting](#self-hosting) · [Use with Claude](#use-mywork-from-claude) · [Project structure](#project-structure)
+
+</div>
+
+---
+
+Each customer is an orb on a home map, and one click opens it in a helpdesk-style workspace. There you'll find a task ledger, contacts, working notes and a handover note for where you left off. Use MyWork to switch customers quickly, capture tasks in seconds and plan your day. It's single-user and self-hosted, and Claude can read and update your board over [MCP](https://modelcontextprotocol.io).
+
+## Features
+
+- **Customer map.** Customers are force-laid-out orbs that stay legible when there are many, can be reached by keyboard and respect reduced motion.
+- **Customer workspace.** Each customer has a task ledger in a **List** or **Board** (kanban) layout, plus contacts, notes, a status and an autosaved **Continue here** handover note.
+- **Quick add.** Press <kbd>⌘K</kbd> / <kbd>Ctrl+K</kbd> anywhere to capture a task for any customer, with the customer, due date and priority set in one line.
+- **Today view.** Today groups deadlines, planned work, waiting tasks with due follow-ups, and tasks you finished today.
+- **Waiting on.** A task can wait on a person or dependency and get its own follow-up date and board column.
+- **Time tracking.** An optional Dynamic Island tracker logs time per open customer and resets every day.
+- **Themes.** Choose from Spacewave, Drift, Paper, Vivicta, Vivicta Pixel, Porcelain and Porcelain Dark.
+- **Your data, portable.** Import and export the whole board as JSON. Each user's data is stored as a JSON file on your own server.
+- **Remote MCP.** Claude (web, desktop, mobile and Claude Code) can list, search and edit customers, notes, contacts and tasks. If you edit in the browser at the same time, the changes are merged field by field.
+
+## Getting started
+
+You need [Node.js 24](https://nodejs.org) or later and npm.
 
 ```sh
+git clone https://github.com/haanok/MyWork.git
+cd MyWork
 npm ci
 npm run dev
 ```
 
-Build the web app with `npm run build`. In `npm run dev` the board is stored
-in localStorage. Environment files and `current.json` are intentionally
-excluded from Git and the container build context.
+Open the URL Vite prints, usually <http://localhost:5173>.
 
-Run `npm test` for day-planning and concurrent-merge checks (Node.js 24+),
-and `cd server && npm test` for API and MCP integration tests.
+> [!NOTE]
+> In development the board is stored in your browser's `localStorage`, and no backend or login is involved. The server API, Pocket ID login and MCP only run in the [self-hosted](#self-hosting) setup.
+
+### Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the Vite dev server |
+| `npm run build` | Type-check and build the frontend to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm test` | Run the day-planning and concurrent-merge tests |
+| `cd server && npm test` | Run the API and MCP integration tests against a local JWKS |
 
 ## Daily workflow
 
-- **Continue here:** an autosaved handover note at the top of each customer,
-  available in both List and Board layouts.
-- **Waiting on:** a task status with **Waiting for** and **Follow up** fields
-  in the task editor. Waiting tasks have their own board column and appear
-  under **Waiting & follow-ups** in Today when a deadline, plan, or follow-up
-  is due. Change status when the task is unblocked, or move its follow-up date.
-- **Plan today:** choose tasks in Today, or use **Plan for today** on a task.
-  **Planned for** in the editor also accepts a future workday. Plans are
-  independent of deadlines; unfinished plans carry forward until completed,
-  rescheduled or removed. Removing a plan does not hide a due deadline or
-  follow-up. Tasks completed today stay visible even without a deadline.
+- **Continue here.** Each customer has an autosaved handover note at the top, in both the List and Board layouts.
+- **Waiting on.** Set a task's status to *Waiting*, then fill in **Waiting for** and **Follow up**. Waiting tasks get their own board column and appear under **Waiting & follow-ups** in Today when a deadline, plan or follow-up is due.
+- **Plan today.** Pick tasks in Today, or use **Plan for today** on a task. **Planned for** also accepts a future workday. Plans are independent of deadlines: an unfinished plan carries forward until you complete it, reschedule it or remove it.
 
-These fields are stored with the board, included in JSON import/export, and
-readable and editable through MCP (`nextStep` on customers; `waiting` status,
-`waitingFor`, `followUp`, and `plannedFor` on tasks). Older boards need no migration.
+Quick add reads a single line:
 
-## Container Registry
-
-GitHub Actions builds `ghcr.io/haanok/mywork-selfhost` from
-`Dockerfile.selfhost` (frontend and API, used by `compose.yaml`) on pull
-requests, and publishes it on pushes to `main` or manual workflow runs,
-tagged `latest` for `main` and `sha-<commit>` for each published build.
-Publishing uses the built-in `GITHUB_TOKEN`. New GHCR packages are private
-by default; retain private visibility in the package settings.
-
-## Self-hosted (Docker Compose + Pocket ID)
-
-`compose.yaml` runs MyWork on your own server:
-
+```text
+acme: call Per about the contract fri !
 ```
+
+- The text before the colon picks the customer, by short name or the start of its name. Leave it out to use the open customer.
+- A trailing due word sets the deadline. It can be `today`, `tomorrow`, a weekday (`fri`, `friday`, or Norwegian `fre`), `+3` or `3d`, `2026-11-12`, or `12.11`.
+- A trailing `!` marks the task as high priority.
+
+> [!TIP]
+> Press <kbd>⌘F</kbd> / <kbd>Ctrl+F</kbd> to jump straight to customer search.
+
+## Self-hosting
+
+In production a single Node process serves the built frontend and the `/api/data` API. It sits behind oauth2-proxy, with [Pocket ID](https://pocket-id.org) as the OIDC provider:
+
+```text
 Internet → host nginx (TLS) → oauth2-proxy :4180 → app :7071
                                    │
                                    └── OIDC with Pocket ID
 ```
 
-- **app** (`ghcr.io/haanok/mywork-selfhost`, built from
-  `Dockerfile.selfhost` with code in `server/`): one Node process that
-  serves the built frontend and implements `GET/PUT /api/data`. It verifies
-  the Pocket ID ID token that oauth2-proxy forwards in
-  `Authorization: Bearer …` (issuer = `POCKET_ID_URL`, audience =
-  `OIDC_CLIENT_ID`, keys from the issuer's discovery document) and stores
-  each user's data in the `mywork-data` volume at `/data/<sub>/data.json`.
-  `/.auth/login/aad` and `/.auth/logout` redirect to oauth2-proxy (the
-  frontend uses these paths for sign-in and sign-out).
-- **oauth2-proxy** handles login and is the only service published on the
-  host, on `${BIND_ADDRESS:-127.0.0.1}:${PORT:-4180}`. The stack contains no nginx; the
-  host's existing nginx proxies to it.
+The app checks the Pocket ID token on every request and stores each user's data in `/data/<sub>/data.json`. Saves use ETags, so a save never silently overwrites an edit made in another tab or by Claude.
 
-### 1. Create the OIDC client in Pocket ID
-
-In Pocket ID, go to **Administration → OIDC Clients → Add OIDC Client**:
-
-- **Callback URL:** `${PUBLIC_URL}/oauth2/callback`, for example
-  `https://mywork.example.com/oauth2/callback`.
-- **PKCE:** enabled (oauth2-proxy uses `S256`). Keep it a confidential
-  client (not *Public client*), so it has a client secret.
-- **Allowed user groups:** add the group whose members may use MyWork.
-  This is the primary access control; users outside it cannot sign in.
-
-Copy the client ID and client secret.
-
-Optionally, set `ALLOWED_GROUPS` (comma-separated group names) as a second
-check: the app then also requires one of these names in the token's
-`groups` claim and returns `403` otherwise.
-
-### 2. Configure and start
-
-On the server you only need `compose.yaml` and `.env` (plus this README
-and `docs/mywork.subdomain.conf` for reference); the app image is pulled from
-GHCR. The package is private, so log in once with a GitHub personal access
-token (classic) that has the `read:packages` scope:
-
-```sh
-docker login ghcr.io -u <github-user>      # paste the token as password
-```
-
-```sh
-cp .env.example .env
-openssl rand -base64 32 | tr -- '+/' '-_'   # paste as OAUTH2_PROXY_COOKIE_SECRET
-$EDITOR .env                                 # PUBLIC_URL, POCKET_ID_URL, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET
-docker compose config --quiet                # validates; fails if a required variable is missing
-docker compose pull
-docker compose up -d
-docker compose logs -f
-```
-
-Data is stored in the named volume `mywork-data` by default. To keep it in
-a host directory instead, set `DATA_PATH` in `.env`. The directory must be
-writable by the user the app runs as, `APP_UID:APP_GID` (default
-`1000:1000`); otherwise saving fails with `EACCES` in `docker compose logs
-app`. On Unraid, use `APP_UID=99` and `APP_GID=100` (`nobody:users`) and
-`chown 99:100` the directory.
-
-To update after a new build on `main`: `docker compose pull && docker
-compose up -d`. To pin a specific build, set
-`MYWORK_IMAGE=ghcr.io/haanok/mywork-selfhost:sha-<commit>` in `.env`. To
-build from a checkout instead of pulling, run
-`docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
-
-Then add a server block to the host's nginx, based on
-[docs/mywork.subdomain.conf](docs/mywork.subdomain.conf). The example uses the SWAG layout
-(`/config/nginx/proxy.conf` sets `Host` and `X-Forwarded-Proto/Host/For`).
-It must proxy to `BIND_ADDRESS:PORT` from `.env`; when nginx runs in its own
-container, set `BIND_ADDRESS` to the host's LAN IP, since `127.0.0.1` is not
-reachable from inside that container. It also needs large headers for the
-split session cookies:
-
-```nginx
-large_client_header_buffers 4 32k;
-proxy_buffer_size 16k;
-client_max_body_size 10m;
-```
-
-Open `PUBLIC_URL`; you are sent to Pocket ID and back to the app.
-
-Notes:
-
-- **Session lifetime.** The session cookie lasts `COOKIE_EXPIRE` (168h) and
-  oauth2-proxy refreshes the ID token every `COOKIE_REFRESH` (30m) if Pocket
-  ID issued a refresh token. If it did not, an expired ID token makes the API
-  return `401`; the frontend then goes through `/.auth/login/aad`, which
-  starts a new login that Pocket ID completes silently while its own session
-  is valid. No data is lost, since nothing is saved on a `401`.
-- **Unverified email.** If login fails with `email in id_token isn't
-  verified`, set `ALLOW_UNVERIFIED_EMAIL=true` in `.env` (or verify the
-  user's address in Pocket ID).
-- **Logout.** `/.auth/logout` clears the oauth2-proxy session only. The
-  Pocket ID session remains, so the next visit signs in again without a
-  prompt.
-- **Tests.** `cd server && npm ci && npm test` runs the API tests against a
-  local JWKS with self-signed tokens.
-
-### 3. Use MyWork from Claude (remote MCP)
-
-The app can also serve a remote [MCP](https://modelcontextprotocol.io)
-server at `${PUBLIC_URL}/mcp`, so Claude (claude.ai, the mobile apps,
-Claude Desktop and Claude Code) can read and update customers, notes,
-contacts and tasks. It is off unless `MCP_CLIENT_ID` is set.
-
-Claude signs in through Pocket ID with its own OIDC client and sends the
-access token as `Authorization: Bearer …`. oauth2-proxy lets `/mcp` and
-`/.well-known/*` through without a session cookie (the app answers `404`
-for every well-known path except `oauth-protected-resource`, so Claude does
-not mistake the login redirect for authorization server metadata),
-and the app verifies the token itself (issuer `POCKET_ID_URL`, audience
-`MCP_CLIENT_ID` or `${PUBLIC_URL}/mcp`). A `401` from `/mcp` points Claude at
-`/.well-known/oauth-protected-resource`, which names Pocket ID as the
-authorization server. Tokens for the web client are not accepted on `/mcp`,
-and Claude's tokens are not accepted on `/api/data`.
-
-1. **Create a second OIDC client in Pocket ID** (Pocket ID has no dynamic
-   client registration, so Claude cannot create one itself):
-   - **Name:** for example `MyWork Claude`.
-   - **Callback URL:** `https://claude.ai/api/mcp/auth_callback`. For
-     Claude Code, also add `http://localhost:*/callback` if Pocket ID
-     accepts it, or use the claude.ai connector, which Claude Code can use.
-   - **PKCE:** enabled. Either client type works: a *public* client needs
-     only the client ID in Claude; a confidential one also needs its secret.
-   - **Allowed user groups:** the same group as the web client.
-
-   - **API (required):** Claude sends `resource=${PUBLIC_URL}/mcp`, and
-     Pocket ID rejects unknown resources with `invalid_request`. Under
-     **Administration → APIs**, add an API whose identifier is exactly
-     `https://mywork.example.com/mcp` (no trailing slash). Then, on the
-     `MyWork Claude` client, **Access → API access → Add API**, choose it
-     with *user-delegated access*. Tokens then have this URL as `aud`,
-     which the app accepts on `/mcp` alongside `MCP_CLIENT_ID`.
-
-2. **Set it in `.env`** and restart:
+1. Create an OIDC client in Pocket ID. Set the callback URL to `${PUBLIC_URL}/oauth2/callback`, enable PKCE and restrict it to an allowed user group.
+2. Configure and start the stack:
 
    ```sh
-   MCP_CLIENT_ID=<client id of "MyWork Claude">
+   docker login ghcr.io -u <github-user>        # token with read:packages
+   cp .env.example .env
+   openssl rand -base64 32 | tr -- '+/' '-_'     # paste as OAUTH2_PROXY_COOKIE_SECRET
+   $EDITOR .env                                   # PUBLIC_URL, POCKET_ID_URL, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET
+   docker compose config --quiet && docker compose pull && docker compose up -d
    ```
 
-   `PUBLIC_URL` must already be set. `docker compose up -d`, then check
-   that `docker compose logs app` shows `MCP enabled at …/mcp`.
+3. Point the host's nginx at oauth2-proxy, starting from [docs/mywork.subdomain.conf](docs/mywork.subdomain.conf).
 
-3. **Add the connector in Claude:** *Settings → Connectors → Add custom
-   connector*. URL: `https://mywork.example.com/mcp`. Under *Advanced
-   settings*, enter the client ID of `MyWork Claude` (and choose *public
-   client*, or enter the secret for a confidential client).
-   Click *Connect* and sign in with Pocket ID.
+> [!IMPORTANT]
+> The image `ghcr.io/haanok/mywork-selfhost` is private, so you have to log in to GHCR first. If you store data in a host directory (`DATA_PATH`), that directory must be writable by `APP_UID:APP_GID`. On Unraid, use `99:100`.
 
-   The plug button in the app's header shows these values with copy
-   buttons, plus setup for Claude Code, VS Code and other MCP clients
-   (any client with Streamable HTTP, OAuth and a pre-registered client ID;
-   add that client's redirect URL to the Pocket ID client). It appears when
-   `GET /api/mcp` reports MCP as enabled.
+To update, run `docker compose pull && docker compose up -d`. To build from a checkout instead, add `-f compose.build.yaml`. GitHub Actions builds the image on pull requests and publishes it on pushes to `main`, tagged `latest` and `sha-<commit>`.
 
-Tools: `list_customers`, `get_customer`, `list_tasks`, `search` (read), and
-`add_customer`, `update_customer`, `append_note`, `add_contact`,
-`add_task`, `update_task`, `delete_task` (write). Customers can be named
-instead of referenced by id.
+For the full guide, see **[docs/self-hosting.md](docs/self-hosting.md)**. It covers every environment variable, group-based access, session lifetime, nginx headers and troubleshooting.
 
-**Concurrent edits.** The browser saves the whole document. To keep it
-from overwriting changes Claude made, `GET /api/data` returns an `ETag` and
-the frontend sends it back in `If-Match`. When the stored data changed in
-the meantime the server answers `412`; the frontend then loads the new
-version, merges its own unsaved changes into it per customer and task (field
-by field; on the same field, the browser's change wins) and saves again. The tab also reloads when it regains
-focus and has nothing unsaved, so changes from Claude show up when you
-switch back.
+## Use MyWork from Claude
 
-**Groups.** If `ALLOWED_GROUPS` is set and Claude's access token has no
-`groups` claim, the app reads the groups from Pocket ID's userinfo
-endpoint (cached for 5 minutes per token).
+The app can serve a remote MCP server at `${PUBLIC_URL}/mcp`. It's off until you set `MCP_CLIENT_ID`.
 
-**Troubleshooting.**
-- *Claude says it cannot connect / no authorization server:* check
-  `curl https://mywork.example.com/.well-known/oauth-protected-resource`
-  returns JSON (not the login page). If it redirects to Pocket ID,
-  oauth2-proxy is not skipping the route; check `OAUTH2_PROXY_SKIP_AUTH_ROUTES`.
-- *`401 Missing bearer token` although Claude is signed in:* oauth2-proxy
-  stripped the `Authorization` header; `OAUTH2_PROXY_SKIP_AUTH_STRIP_HEADERS`
-  must be `"false"`.
-- *`401 Invalid token` after signing in:* `MCP_CLIENT_ID` does not match
-  the client Claude used, or Pocket ID issues access tokens for a
-  different audience. Decode the token's payload and compare `aud`.
-- *`403`:* the user is not in `ALLOWED_GROUPS`.
+1. Create a second Pocket ID client for Claude. Use the callback `https://claude.ai/api/mcp/auth_callback`, enable PKCE, and add an API whose identifier is exactly `${PUBLIC_URL}/mcp`.
+2. Set `MCP_CLIENT_ID` in `.env` and restart. The logs then show `MCP enabled at …/mcp`.
+3. In Claude, go to **Settings → Connectors → Add custom connector**, enter the `/mcp` URL and the client ID, and sign in with Pocket ID.
+
+The plug button in the app's header shows these values with copy buttons, along with setup steps for Claude Code, VS Code and other MCP clients.
+
+| Read | Write |
+| --- | --- |
+| `list_customers`, `get_customer`, `list_tasks`, `search` | `add_customer`, `update_customer`, `append_note`, `add_contact`, `add_task`, `update_task`, `delete_task` |
+
+> [!NOTE]
+> Claude's tokens are only accepted on `/mcp`, and web tokens only on `/api/data`. For token audiences, group checks and troubleshooting, see [docs/self-hosting.md](docs/self-hosting.md#3-use-mywork-from-claude-remote-mcp).
+
+## Project structure
+
+```text
+src/                 React frontend (map, workspace, Today, quick add, themes)
+server/              Node backend: static files, /api/data, OIDC verification, MCP
+test/                Frontend logic tests (planning, merge)
+docs/                Self-hosting guide, nginx example, third-party licences
+compose.yaml         App + oauth2-proxy stack
+Dockerfile.selfhost  Image used by compose.yaml
+DESIGN.md            Design system (colours, type, components)
+PRODUCT.md           Product brief and principles
+```
