@@ -1508,12 +1508,6 @@ button {
   font-size: 0.75rem;
 }
 
-.task-waiting-editor {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  gap: 10px;
-}
-
 .task-waiting-info {
   margin-top: 10px;
   color: var(--space-muted);
@@ -1580,12 +1574,57 @@ button {
 .task-editor {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+/* Title and description read as one block; each later group is separated. */
+.task-editor-text {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
+.task-editor-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .task-editor textarea {
-  min-height: 80px;
+  display: block;
+  min-height: 96px;
   resize: vertical;
+}
+
+.task-editor textarea.task-editor-solution {
+  min-height: 64px;
+}
+
+.task-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
+  gap: 12px 14px;
+}
+
+.task-editor-grid .crm-field {
+  min-height: 39px;
+}
+
+/* While editing a ledger row, the editor takes over the due-date column:
+   the due date is already in the form, and the fields need the width. */
+.task-entry.is-editing:not(.is-card) .task-date {
+  display: none;
+}
+
+@media (min-width: 681px) {
+  .task-entry.is-editing:not(.is-card) .task-content {
+    grid-column: 1 / 3;
+  }
+}
+
+.task-editor-actions {
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid var(--space-line);
 }
 
 .editor-actions {

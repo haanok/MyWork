@@ -98,7 +98,7 @@ export function TaskEntry({
 
   return (
     <article
-      className={`task-entry${isCard ? ' is-card' : ''}${dragging ? ' is-dragging' : ''}${overdue ? ' is-overdue' : ''}${task.status === 'done' ? ' is-complete' : ''}`}
+      className={`task-entry${isCard ? ' is-card' : ''}${dragging ? ' is-dragging' : ''}${overdue ? ' is-overdue' : ''}${task.status === 'done' ? ' is-complete' : ''}${editing ? ' is-editing' : ''}`}
       draggable={isCard && !editing}
       onDragStart={isCard && !editing ? onDragStart : undefined}
       onDragEnd={isCard ? () => setDragging(false) : undefined}
@@ -119,27 +119,33 @@ export function TaskEntry({
       <div className="task-content">
         {editing ? (
           <div className="task-editor">
-            <input className="crm-field" aria-label="Task title" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={onKeyDown} autoFocus />
-            <textarea className="crm-field" aria-label="Task description" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} onKeyDown={onKeyDown} placeholder="Add details and next steps" />
-            <textarea className="crm-field" aria-label="Task solution" rows={3} value={solution} onChange={(event) => setSolution(event.target.value)} onKeyDown={onKeyDown} placeholder="Solution: what you did, for later reference" />
+            <div className="task-editor-text">
+              <input className="crm-field task-editor-title" aria-label="Task title" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={onKeyDown} autoFocus />
+              <textarea className="crm-field" aria-label="Task description" rows={4} value={description} onChange={(event) => setDescription(event.target.value)} onKeyDown={onKeyDown} placeholder="Add details and next steps" />
+            </div>
+            <label className="planning-field">
+              <span>Solution</span>
+              <textarea className="crm-field task-editor-solution" rows={2} value={solution} onChange={(event) => setSolution(event.target.value)} onKeyDown={onKeyDown} placeholder="What you did, for later reference" />
+            </label>
             {task.status === 'waiting' && (
-              <div className="task-waiting-editor">
+              <div className="task-editor-grid">
                 <label className="planning-field"><span>Waiting for</span><input className="crm-field" value={waitingFor} onChange={(event) => setWaitingFor(event.target.value)} onKeyDown={onKeyDown} placeholder="Person, access, or response" /></label>
                 <label className="planning-field"><span>Follow up</span><DateField label="Follow up" value={followUp} onChange={setFollowUp} onKeyDown={onKeyDown} /></label>
               </div>
             )}
-            {moveTargets && moveTargets.length > 0 && (
-              <label className="planning-field"><span>Customer</span>
-                <select className="crm-field" value={customerId} onChange={(event) => setCustomerId(event.target.value)} onKeyDown={onKeyDown}>
-                  {!moveTargets.some((entry) => entry.id === task.customerId) && <option value={task.customerId}>{customer?.name || 'Current customer'}</option>}
-                  {moveTargets.map((entry) => <option value={entry.id} key={entry.id}>{entry.name || 'Untitled customer'}</option>)}
-                </select>
-                <small>Move the task to another customer.</small>
-              </label>
-            )}
-            <label className="planning-field"><span>Planned for</span><DateField label="Planned for" value={plannedFor} onChange={setPlannedFor} onKeyDown={onKeyDown} /><small>Choose a workday without changing the deadline.</small></label>
-            <div className="editor-actions">
-              <label className="date-control"><span>Due date</span><DateField label="Due date" value={due} onChange={setDue} onKeyDown={onKeyDown} /></label>
+            <div className="task-editor-grid">
+              <label className="planning-field"><span>Due date</span><DateField label="Due date" value={due} onChange={setDue} onKeyDown={onKeyDown} /></label>
+              <label className="planning-field"><span>Planned for</span><DateField label="Planned for" value={plannedFor} onChange={setPlannedFor} onKeyDown={onKeyDown} /><small>Workday only. The deadline stays.</small></label>
+              {moveTargets && moveTargets.length > 0 && (
+                <label className="planning-field"><span>Customer</span>
+                  <select className="crm-field" value={customerId} onChange={(event) => setCustomerId(event.target.value)} onKeyDown={onKeyDown}>
+                    {!moveTargets.some((entry) => entry.id === task.customerId) && <option value={task.customerId}>{customer?.name || 'Current customer'}</option>}
+                    {moveTargets.map((entry) => <option value={entry.id} key={entry.id}>{entry.name || 'Untitled customer'}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+            <div className="editor-actions task-editor-actions">
               <button type="button" className="crm-secondary" onClick={cancelEdit}>Cancel</button>
               <button type="button" className="crm-primary small-primary" onClick={save}>Save</button>
             </div>
