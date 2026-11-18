@@ -306,7 +306,7 @@
   border-color: rgb(179 48 29 / 45%);
 }
 
-.app[data-home-theme='paper'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast, .vault-setup-content) {
+.app[data-home-theme='paper'] :is(.data-menu-list, .date-popover, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast, .vault-setup-content) {
   border-color: var(--space-line);
   background: var(--paper-sheet);
   color: var(--space-fg);
@@ -611,7 +611,7 @@
   background: #0d2b2f;
 }
 
-.app[data-home-theme='vivicta'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast, .vault-setup-content) {
+.app[data-home-theme='vivicta'] :is(.data-menu-list, .date-popover, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast, .vault-setup-content) {
   border-color: #1f3a50;
   background: linear-gradient(180deg, #0a1b26 0%, #07111d 120px);
   box-shadow: 0 20px 44px -22px rgb(0 0 0 / 90%), inset 0 1px 0 rgb(98 239 184 / 12%);
@@ -658,7 +658,7 @@
   box-shadow: 0 2px 0 var(--pixel-drop);
 }
 
-.app[data-art-style='pixel'] :is(button, input, select, textarea, .search, .task-composer, .priority-control, .task-filters, .data-menu-list, .task-customer) {
+.app[data-art-style='pixel'] :is(button, input, select, textarea, .search, .task-composer, .priority-control, .task-filters, .data-menu-list, .date-popover, .task-customer) {
   border-radius: 0;
 }
 
@@ -728,7 +728,7 @@
   border-bottom: 2px dashed rgb(31 58 82 / 75%);
 }
 
-.app[data-art-style='pixel'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast) {
+.app[data-art-style='pixel'] :is(.data-menu-list, .date-popover, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast) {
   border: 2px solid var(--pixel-frame);
   background: #071321;
   box-shadow: inset 0 2px 0 rgb(98 239 184 / 10%), 0 4px 0 var(--pixel-drop);
@@ -1205,7 +1205,7 @@
 .app[data-home-theme='porcelain'] .remove-customer.archive-customer { color: var(--space-muted); }
 .app[data-home-theme='porcelain'] .quick-add-high { border-color: var(--space-pink); }
 
-.app[data-home-theme='porcelain'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast, .vault-setup-content) {
+.app[data-home-theme='porcelain'] :is(.data-menu-list, .date-popover, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast, .vault-setup-content) {
   border-color: var(--space-line);
   background: var(--porcelain-surface);
   color: var(--space-fg);
@@ -1530,7 +1530,7 @@
   .app[data-home-theme='porcelain-dark'] .remove-customer.archive-customer { color: var(--space-muted); }
   .app[data-home-theme='porcelain-dark'] .quick-add-high { border-color: var(--space-pink); }
 
-  .app[data-home-theme='porcelain-dark'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast, .vault-setup-content) {
+  .app[data-home-theme='porcelain-dark'] :is(.data-menu-list, .date-popover, .import-dialog, .quick-add-dialog, .mcp-dialog, .tst-toast, .vault-setup-content) {
     border-color: var(--space-line);
     background: #1b2022;
     color: var(--space-fg);

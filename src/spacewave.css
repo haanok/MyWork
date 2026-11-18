@@ -448,6 +448,7 @@ button {
 }
 
 .app[data-home-theme='drift'] .data-menu-list,
+.app[data-home-theme='drift'] .date-popover,
 .app[data-home-theme='drift'] .import-dialog,
 .app[data-home-theme='drift'] .quick-add-dialog,
 .app[data-home-theme='drift'] .mcp-dialog {
@@ -530,7 +531,7 @@ button {
   background: rgb(255 255 255 / 3%);
 }
 
-.app[data-home-theme='drift'] .data-menu-list {
+.app[data-home-theme='drift'] :is(.data-menu-list, .date-popover) {
   border: 1px solid transparent;
   background:
     radial-gradient(ellipse at var(--glass-x, 15%) var(--glass-y, 0%), rgb(255 255 255 / 9%), transparent 65%) padding-box,
@@ -3658,4 +3659,272 @@ kbd {
 .import-actions .mcp-note {
   align-self: center;
   margin-right: auto;
+}
+
+/* Date field: themed replacement for the native date picker (DateField.tsx). */
+.date-field {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms var(--space-ease), background-color 160ms var(--space-ease);
+}
+
+.date-field:hover {
+  border-color: color-mix(in srgb, var(--space-cyan) 45%, var(--space-line));
+}
+
+.date-field.is-open {
+  border-color: var(--space-cyan);
+}
+
+.date-field svg {
+  flex: none;
+  color: var(--space-muted);
+}
+
+.date-field.is-open svg,
+.date-field:hover svg {
+  color: var(--space-cyan);
+}
+
+.date-field.is-empty .date-field-value {
+  color: var(--space-quiet);
+}
+
+.planning-field .date-field {
+  width: 100%;
+}
+
+.date-popover {
+  position: fixed;
+  z-index: 80;
+  width: min(296px, calc(100vw - 16px));
+  padding: 12px 12px 10px;
+  border: 1px solid var(--space-line);
+  border-radius: var(--space-radius);
+  background: #101831;
+  color: var(--space-fg);
+  box-shadow: 0 6px 14px -8px rgb(0 0 0 / 60%), 0 22px 44px -18px rgb(0 0 0 / 75%);
+  transform-origin: top left;
+  animation: date-pop 170ms var(--space-ease);
+}
+
+.date-popover.is-above {
+  transform-origin: bottom left;
+  animation-name: date-pop-up;
+}
+
+@keyframes date-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+}
+
+@keyframes date-pop-up {
+  from { opacity: 0; transform: translateY(4px) scale(0.985); }
+}
+
+.date-popover button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.date-popover :focus-visible {
+  outline: 2px solid var(--space-cyan);
+  outline-offset: 1px;
+}
+
+.date-popover-head {
+  display: grid;
+  grid-template-columns: 30px 1fr 30px;
+  align-items: center;
+  gap: 4px;
+}
+
+.date-popover-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-popover-title::first-letter {
+  text-transform: uppercase;
+}
+
+.date-popover-nav {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  color: var(--space-muted) !important;
+}
+
+.date-popover-nav:hover {
+  background: var(--space-raised) !important;
+  color: var(--space-fg) !important;
+}
+
+.date-popover-quick {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 8px;
+}
+
+.date-popover-quick button {
+  flex: 1 1 auto;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--space-line);
+  border-radius: 4px;
+  color: var(--space-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.date-popover-quick button:hover {
+  border-color: color-mix(in srgb, var(--space-cyan) 50%, var(--space-line));
+  color: var(--space-fg);
+}
+
+.date-popover-quick button.is-active {
+  border-color: var(--space-cyan);
+  color: var(--space-cyan);
+}
+
+.date-grid {
+  display: grid;
+  gap: 2px;
+}
+
+.date-grid-row {
+  display: grid;
+  grid-template-columns: 22px repeat(7, 1fr);
+  align-items: center;
+  gap: 2px;
+}
+
+.date-grid-row > span[role='gridcell'] {
+  display: grid;
+}
+
+.date-grid-row.is-head {
+  margin-bottom: 2px;
+}
+
+.date-grid-weekday,
+.date-grid-week {
+  color: var(--space-quiet);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.date-grid-weekday {
+  padding-block: 4px;
+  text-transform: capitalize;
+}
+
+.date-grid-week {
+  opacity: 0.8;
+}
+
+.date-cell {
+  position: relative;
+  height: 34px;
+  border-radius: 4px;
+  color: var(--space-fg);
+  font-size: 0.84rem;
+  font-weight: 500;
+  transition: background-color 120ms var(--space-ease), color 120ms var(--space-ease);
+}
+
+.date-cell.is-weekend {
+  color: var(--space-muted);
+}
+
+.date-cell.is-past {
+  color: var(--space-quiet);
+}
+
+.date-cell.is-outside {
+  color: var(--space-quiet);
+  opacity: 0.55;
+}
+
+.date-cell:hover {
+  background: var(--space-raised);
+  color: var(--space-fg);
+  opacity: 1;
+}
+
+.date-cell.is-today {
+  color: var(--space-cyan);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--space-cyan) 55%, transparent);
+}
+
+.date-cell.is-selected,
+.date-cell.is-selected:hover {
+  background: var(--space-cyan);
+  color: var(--space-void);
+  font-weight: 700;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.date-popover-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--space-line);
+}
+
+.date-popover-hint {
+  color: var(--space-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-popover-clear {
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--space-muted) !important;
+  font-size: 0.78rem !important;
+  font-weight: 600;
+}
+
+.date-popover-clear:hover {
+  background: var(--space-raised) !important;
+  color: var(--space-pink) !important;
+}
+
+.app[data-art-style='pixel'] .date-popover :is(.date-cell, .date-popover-quick button, .date-popover-nav) {
+  border-radius: 0;
+}
+
+.app[data-art-style='pixel'] .date-popover-title {
+  font-family: var(--pixel-font);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .date-popover {
+    animation: none;
+  }
+}
+
+.date-control > span {
+  white-space: nowrap;
 }

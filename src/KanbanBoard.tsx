@@ -3,6 +3,7 @@ import { today } from './dates';
 import { IconFlag, IconPlus } from './icons';
 import { STATUS_LABEL, TASK_DRAG_TYPE, TaskEntry } from './TaskEntry';
 import type { Customer, Priority, Task, TaskStatus } from './types';
+import { DateField } from './DateField';
 
 const COLUMNS: TaskStatus[] = ['open', 'doing', 'waiting', 'done'];
 
@@ -173,7 +174,7 @@ function ColumnComposer({
       <div className="kanban-composer-row">
         <label className="date-control">
           <span>Due date</span>
-          <input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} />
+          <DateField label="Due date" value={due} onChange={setDue} />
         </label>
         <div className="priority-control" role="group" aria-label="Task priority">
           <button type="button" className={priority === 'normal' ? 'is-active' : ''} aria-pressed={priority === 'normal'} onClick={() => setPriority('normal')}>Normal</button>

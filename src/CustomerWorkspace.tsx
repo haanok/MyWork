@@ -5,6 +5,7 @@ import { KanbanBoard } from './KanbanBoard';
 import { dailyTotals, formatDuration, useNow, type useTimeTracker } from './timeTracking';
 import { TaskEntry } from './TaskEntry';
 import type { Customer, CustomerStatus, Priority, Task, TaskStatus } from './types';
+import { DateField } from './DateField';
 
 type TaskFilter = 'open' | 'done' | 'all';
 export type WorkspaceLayout = 'list' | 'board';
@@ -305,7 +306,7 @@ export function CustomerWorkspace({
           <div className="composer-actions">
             <label className="date-control">
               <span>Due date</span>
-              <input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} />
+              <DateField label="Due date" value={due} onChange={setDue} />
             </label>
             <div className="priority-control" role="group" aria-label="Task priority">
               <button type="button" className={priority === 'normal' ? 'is-active' : ''} aria-pressed={priority === 'normal'} onClick={() => setPriority('normal')}>Normal</button>

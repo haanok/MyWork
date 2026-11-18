@@ -2,6 +2,7 @@ import { useState, type DragEvent, type KeyboardEvent } from 'react';
 import { formatDueLong, relativeDue, today } from './dates';
 import { IconFlag, IconTrash } from './icons';
 import type { Customer, Task, TaskStatus } from './types';
+import { DateField } from './DateField';
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {
   open: 'Open',
@@ -79,7 +80,7 @@ export function TaskEntry({
     setEditing(false);
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement | HTMLSelectElement>) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement | HTMLSelectElement | HTMLButtonElement>) => {
     if (event.key === 'Escape') {
       event.stopPropagation();
       cancelEdit();
@@ -124,7 +125,7 @@ export function TaskEntry({
             {task.status === 'waiting' && (
               <div className="task-waiting-editor">
                 <label className="planning-field"><span>Waiting for</span><input className="crm-field" value={waitingFor} onChange={(event) => setWaitingFor(event.target.value)} onKeyDown={onKeyDown} placeholder="Person, access, or response" /></label>
-                <label className="planning-field"><span>Follow up</span><input className="crm-field" type="date" value={followUp} onChange={(event) => setFollowUp(event.target.value)} onKeyDown={onKeyDown} /></label>
+                <label className="planning-field"><span>Follow up</span><DateField label="Follow up" value={followUp} onChange={setFollowUp} onKeyDown={onKeyDown} /></label>
               </div>
             )}
             {moveTargets && moveTargets.length > 0 && (
@@ -136,9 +137,9 @@ export function TaskEntry({
                 <small>Move the task to another customer.</small>
               </label>
             )}
-            <label className="planning-field"><span>Planned for</span><input className="crm-field" type="date" value={plannedFor} onChange={(event) => setPlannedFor(event.target.value)} onKeyDown={onKeyDown} /><small>Choose a workday without changing the deadline.</small></label>
+            <label className="planning-field"><span>Planned for</span><DateField label="Planned for" value={plannedFor} onChange={setPlannedFor} onKeyDown={onKeyDown} /><small>Choose a workday without changing the deadline.</small></label>
             <div className="editor-actions">
-              <label className="date-control"><span>Due date</span><input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
+              <label className="date-control"><span>Due date</span><DateField label="Due date" value={due} onChange={setDue} onKeyDown={onKeyDown} /></label>
               <button type="button" className="crm-secondary" onClick={cancelEdit}>Cancel</button>
               <button type="button" className="crm-primary small-primary" onClick={save}>Save</button>
             </div>
