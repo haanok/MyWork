@@ -274,6 +274,11 @@ export default function App() {
     return { customers: live.size, open, overdue, today: todayTasks(data.customers, data.tasks, t0).pending.length };
   }, [data, day]);
 
+  const moveTargets = useMemo(
+    () => data.customers.filter((c) => c.status !== 'archived').sort((a, b) => a.name.localeCompare(b.name)),
+    [data.customers],
+  );
+
   // In a customer's workspace the search narrows the customer list.
   const listed = useMemo(() => {
     if (!query.trim()) return visible;
@@ -577,6 +582,7 @@ export default function App() {
             onAddTask={(title, description, priority, due, status) => actions.addTask(selected.id, title, description, priority, due, status)}
             onUpdateTask={actions.updateTask}
             onRemoveTask={actions.removeTask}
+            moveTargets={moveTargets}
           />
         ) : view === 'today' ? (
           <TodayView

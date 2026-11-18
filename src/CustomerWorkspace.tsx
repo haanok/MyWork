@@ -24,6 +24,8 @@ interface Props {
   onAddTask: (title: string, description: string, priority: Priority, due?: string, status?: TaskStatus) => void;
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onRemoveTask: (id: string) => void;
+  /** Customers a task can be moved to. */
+  moveTargets?: Customer[];
   onArchiveCustomer: () => void;
   onDeleteCustomer: () => void;
 }
@@ -101,6 +103,7 @@ export function CustomerWorkspace({
   onAddTask,
   onUpdateTask,
   onRemoveTask,
+  moveTargets,
   onArchiveCustomer,
   onDeleteCustomer,
 }: Props) {
@@ -263,6 +266,7 @@ export function CustomerWorkspace({
             onAddTask={onAddTask}
             onUpdateTask={onUpdateTask}
             onRemoveTask={onRemoveTask}
+            moveTargets={moveTargets}
           />
         ) : (<>
         <button
@@ -341,7 +345,7 @@ export function CustomerWorkspace({
               <span>Log a task to record the next action.</span>
             </div>
           ) : orderedTasks.map((task) => (
-            <TaskEntry key={task.id} task={task} onUpdate={onUpdateTask} onRemove={onRemoveTask} />
+            <TaskEntry key={task.id} task={task} onUpdate={onUpdateTask} onRemove={onRemoveTask} moveTargets={moveTargets} />
           ))}
         </div>
         </>)}

@@ -19,6 +19,10 @@ export function TodayView({ customers, tasks, onOpenCustomer, onUpdateTask, onRe
   const [planning, setPlanning] = useState(false);
   const [query, setQuery] = useState('');
   const customerById = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
+  const moveTargets = useMemo(
+    () => customers.filter((c) => c.status !== 'archived').sort((a, b) => a.name.localeCompare(b.name)),
+    [customers],
+  );
 
   const { overdue, dueToday, planned, waiting, doneToday, pending } = useMemo(
     () => todayTasks(customers, tasks, t0), [customers, tasks, t0],
@@ -50,6 +54,7 @@ export function TodayView({ customers, tasks, onOpenCustomer, onUpdateTask, onRe
               task={task}
               customer={customerById.get(task.customerId)}
               onOpenCustomer={onOpenCustomer}
+              moveTargets={moveTargets}
               onUpdate={onUpdateTask}
               onRemove={onRemoveTask}
             />

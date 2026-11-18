@@ -318,7 +318,7 @@ function buildServer(sub, storage) {
 
   server.registerTool('update_task', {
     title: 'Update task',
-    description: 'Change a task: title, status (open, doing, waiting, done), deadline (due), planned workday (plannedFor), waitingFor, followUp, priority, description or solution. Pass an empty string to clear any optional text or date. Planning does not change the deadline.',
+    description: 'Change a task: title, status (open, doing, waiting, done), deadline (due), planned workday (plannedFor), waitingFor, followUp, priority, description or solution, or move it to another customer. Pass an empty string to clear any optional text or date. Planning does not change the deadline.',
     inputSchema: {
       task_id: z.string().min(1),
       title: z.string().trim().min(1).optional(),
@@ -330,10 +330,18 @@ function buildServer(sub, storage) {
       priority: z.enum(PRIORITIES).optional(),
       description: z.string().optional(),
       solution: z.string().optional().describe('What was done to resolve the task'),
+      customer: z.string().min(1).optional().describe('Move the task to this customer (name, short name or id)'),
     },
     annotations: additive,
-  }, writer((data, { task_id: id, title, status, due, plannedFor, waitingFor, followUp, priority, description, solution }, stamp) => {
+  }, writer((data, { task_id: id, title, status, due, plannedFor, waitingFor, followUp, priority, description, solution, customer }, stamp) => {
     const task = findTask(data, id);
+    if (customer !== undefined) {
+      const target = resolveCustomer(data, customer);
+      if (target.id !== task.customerId) {
+        touch(data, task.customerId, stamp);
+        task.customerId = target.id;
+      }
+    }
     if (title !== undefined) task.title = title;
     if (priority !== undefined) task.priority = priority;
     if (due !== undefined) { if (due) task.due = due; else delete task.due; }

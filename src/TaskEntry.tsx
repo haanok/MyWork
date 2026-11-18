@@ -19,6 +19,7 @@ export function TaskEntry({
   onRemove,
   customer,
   onOpenCustomer,
+  moveTargets,
   variant = 'row',
 }: {
   task: Task;
@@ -27,6 +28,8 @@ export function TaskEntry({
   /** Shown as a link to the customer in cross-customer views. */
   customer?: Customer;
   onOpenCustomer?: (id: string) => void;
+  /** Customers the task can be moved to from the editor. */
+  moveTargets?: Customer[];
   /** `card` renders a compact, draggable card for the kanban board. */
   variant?: 'row' | 'card';
 }) {
@@ -38,6 +41,7 @@ export function TaskEntry({
   const [waitingFor, setWaitingFor] = useState(task.waitingFor ?? '');
   const [followUp, setFollowUp] = useState(task.followUp ?? '');
   const [plannedFor, setPlannedFor] = useState(task.plannedFor ?? '');
+  const [customerId, setCustomerId] = useState(task.customerId);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const overdue = !!task.due && task.due < today() && task.status !== 'done';
   const followUpDue = task.status === 'waiting' && !!task.followUp && task.followUp <= today();
@@ -51,6 +55,7 @@ export function TaskEntry({
       title: cleanTitle, description: description.trim(), solution: solution.trim() || undefined,
       due: due || undefined, waitingFor: waitingFor.trim() || undefined,
       followUp: followUp || undefined, plannedFor: plannedFor || undefined,
+      ...(customerId !== task.customerId ? { customerId } : {}),
     });
     setEditing(false);
   };
@@ -63,17 +68,18 @@ export function TaskEntry({
     setWaitingFor(task.waitingFor ?? '');
     setFollowUp(task.followUp ?? '');
     setPlannedFor(task.plannedFor ?? '');
+    setCustomerId(task.customerId);
     setEditing(true);
   };
 
   const dirty = title !== task.title || description !== (task.description ?? '') || solution !== (task.solution ?? '') || due !== (task.due ?? '')
-    || waitingFor !== (task.waitingFor ?? '') || followUp !== (task.followUp ?? '') || plannedFor !== (task.plannedFor ?? '');
+    || waitingFor !== (task.waitingFor ?? '') || followUp !== (task.followUp ?? '') || plannedFor !== (task.plannedFor ?? '') || customerId !== task.customerId;
   const cancelEdit = () => {
     if (dirty && !window.confirm('Discard unsaved changes to this task?')) return;
     setEditing(false);
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement | HTMLSelectElement>) => {
     if (event.key === 'Escape') {
       event.stopPropagation();
       cancelEdit();
@@ -121,6 +127,15 @@ export function TaskEntry({
                 <label className="planning-field"><span>Follow up</span><input className="crm-field" type="date" value={followUp} onChange={(event) => setFollowUp(event.target.value)} onKeyDown={onKeyDown} /></label>
               </div>
             )}
+            {moveTargets && moveTargets.length > 0 && (
+              <label className="planning-field"><span>Customer</span>
+                <select className="crm-field" value={customerId} onChange={(event) => setCustomerId(event.target.value)} onKeyDown={onKeyDown}>
+                  {!moveTargets.some((entry) => entry.id === task.customerId) && <option value={task.customerId}>{customer?.name || 'Current customer'}</option>}
+                  {moveTargets.map((entry) => <option value={entry.id} key={entry.id}>{entry.name || 'Untitled customer'}</option>)}
+                </select>
+                <small>Move the task to another customer.</small>
+              </label>
+            )}
             <label className="planning-field"><span>Planned for</span><input className="crm-field" type="date" value={plannedFor} onChange={(event) => setPlannedFor(event.target.value)} onKeyDown={onKeyDown} /><small>Choose a workday without changing the deadline.</small></label>
             <div className="editor-actions">
               <label className="date-control"><span>Due date</span><input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
@@ -140,7 +155,7 @@ export function TaskEntry({
               {task.priority === 'high' && <span className="priority-mark"><IconFlag width={13} height={13} /> High</span>}
             </div>
             <p className={`task-description${task.description ? '' : ' is-blank'}${hasLongDescription && !descriptionExpanded ? ' is-collapsed' : ''}`}>
-              {task.description || 'No description yet. Add the details needed to move this forward.'}
+              {task.description || 'No description yet'}
             </p>
             {task.solution && (
               <div className="task-solution">

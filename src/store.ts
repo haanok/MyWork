@@ -53,7 +53,7 @@ function reducer(state: AppData, action: Action): AppData {
         ...state,
         tasks: state.tasks.map((t) => (t.id === action.id ? next : t)),
         customers: state.customers.map((c) =>
-          c.id === target.customerId ? { ...c, touchedAt: stamp } : c,
+          c.id === target.customerId || c.id === next.customerId ? { ...c, touchedAt: stamp } : c,
         ),
       };
     }

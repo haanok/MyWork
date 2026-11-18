@@ -406,7 +406,7 @@ test('MCP initialize and tools/list', async () => {
 test('MCP tools change the same data the web app reads', async () => {
   const acme = await call('add_customer', { name: 'Acme Synthetic AS' });
   assert.equal(acme.value.status, 'active');
-  await call('add_customer', { name: 'Acme Other' });
+  const other = await call('add_customer', { name: 'Acme Other' });
 
   const ambiguous = await call('add_task', { customer: 'acme', title: 'x' });
   assert.equal(ambiguous.isError, true);
@@ -419,6 +419,14 @@ test('MCP tools change the same data the web app reads', async () => {
 
   const open = await call('list_tasks', { customer: 'Acme Synthetic' });
   assert.deepEqual(open.value.map((t) => t.title), ['Send offer']);
+
+  const moved = await call('update_task', { task_id: task.value.id, customer: 'Acme Other' });
+  assert.equal(moved.value.customer, 'Acme Other');
+  assert.equal(moved.value.customerId, other.value.id);
+  assert.deepEqual((await call('list_tasks', { customer: 'Acme Synthetic' })).value, []);
+  const missingTarget = await call('update_task', { task_id: task.value.id, customer: 'Nobody Synthetic' });
+  assert.equal(missingTarget.isError, true);
+  await call('update_task', { task_id: task.value.id, customer: acme.value.id });
 
   const done = await call('update_task', { task_id: task.value.id, status: 'done', due: '' });
   assert.equal(done.value.status, 'done');

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, t
 import { today } from './dates';
 import { IconFlag, IconPlus } from './icons';
 import { STATUS_LABEL, TASK_DRAG_TYPE, TaskEntry } from './TaskEntry';
-import type { Priority, Task, TaskStatus } from './types';
+import type { Customer, Priority, Task, TaskStatus } from './types';
 
 const COLUMNS: TaskStatus[] = ['open', 'doing', 'waiting', 'done'];
 
@@ -11,6 +11,7 @@ interface Props {
   onAddTask: (title: string, description: string, priority: Priority, due: string | undefined, status: TaskStatus) => void;
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onRemoveTask: (id: string) => void;
+  moveTargets?: Customer[];
 }
 
 function sortColumn(status: TaskStatus, list: Task[]) {
@@ -25,7 +26,7 @@ function sortColumn(status: TaskStatus, list: Task[]) {
 }
 
 /** Tasks for one customer grouped by status. Cards can be dragged between columns. */
-export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask }: Props) {
+export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask, moveTargets }: Props) {
   const [dropTarget, setDropTarget] = useState<TaskStatus | null>(null);
   const [composerFor, setComposerFor] = useState<TaskStatus | null>(null);
 
@@ -98,7 +99,7 @@ export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask }: Pr
               {list.length === 0 && composerFor !== status ? (
                 <p className="kanban-empty">{status === 'done' ? 'Drop finished tasks here.' : 'No tasks here.'}</p>
               ) : list.map((task) => (
-                <TaskEntry key={task.id} task={task} variant="card" onUpdate={onUpdateTask} onRemove={onRemoveTask} />
+                <TaskEntry key={task.id} task={task} variant="card" onUpdate={onUpdateTask} onRemove={onRemoveTask} moveTargets={moveTargets} />
               ))}
             </div>
 
