@@ -3641,3 +3641,21 @@ kbd {
   from { height: 4px; }
   to { height: 16px; }
 }
+
+.inbox-senders {
+  min-height: 84px;
+  padding: 10px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.import-dialog .inbox-error {
+  color: var(--space-coral, #ff8a7a);
+}
+
+.import-actions .mcp-note {
+  align-self: center;
+  margin-right: auto;
+}

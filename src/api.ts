@@ -111,3 +111,29 @@ export async function fetchMcpInfo(): Promise<McpInfo | null> {
     return null;
   }
 }
+
+export type InboundInfo = { enabled: false } | { enabled: true; address: string; senders: string[]; requireDkim: boolean };
+
+/** Email-to-task settings for the signed-in user. Resolves to null when the server cannot tell. */
+export async function fetchInboundInfo(): Promise<InboundInfo | null> {
+  try {
+    const response = await fetch('/api/inbound', { credentials: 'same-origin' });
+    if (!response.ok || response.redirected) return null;
+    if (!(response.headers.get('content-type') ?? '').includes('application/json')) return null;
+    return await response.json() as InboundInfo;
+  } catch {
+    return null;
+  }
+}
+
+/** Replaces the sender addresses whose mail becomes tasks. Throws with the server's message on failure. */
+export async function saveInboundSenders(senders: string[]): Promise<InboundInfo> {
+  const response = await fetch('/api/inbound', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ senders }),
+  });
+  if (!response.ok) throw new Error((await response.text()) || `Saving failed (${response.status}).`);
+  return await response.json() as InboundInfo;
+}

@@ -205,3 +205,57 @@ endpoint (cached for 5 minutes per token).
   the client Claude used, or Pocket ID issues access tokens for a
   different audience. Decode the token's payload and compare `aud`.
 - *`403`:* the user is not in `ALLOWED_GROUPS`.
+
+### 4. Email to task
+
+Forwarded mail can become tasks, for example a Teams message shared with
+**… → Share to Outlook**. The app polls a dedicated mailbox over IMAP (any
+provider; Purelymail is the default host) and needs no inbound port or
+oauth2-proxy route. It is off unless `INBOUND_IMAP_USER` and
+`INBOUND_IMAP_PASSWORD` are set.
+
+1. **Create a mailbox** only for this, for example `mywork@example.com`.
+   Use an app password if the provider offers one. Don't use a personal
+   mailbox: every unread message in its inbox is processed.
+2. **Set it in `.env`** and restart:
+
+   ```sh
+   INBOUND_IMAP_USER=mywork@example.com
+   INBOUND_IMAP_PASSWORD=<password>
+   # INBOUND_IMAP_HOST=imap.purelymail.com
+   # TZ=Europe/Oslo
+   ```
+
+   `docker compose logs app` then shows `Inbound mail enabled: …`.
+3. **Register your sender addresses** in the app: **⋯ → Email to task…**.
+   Each address belongs to one MyWork user, and that user's board gets the
+   task.
+
+**The subject picks the customer**, with the same syntax as quick add.
+`Fw:`/`VS:`/`Re:` prefixes are ignored.
+
+| Subject | Result |
+| --- | --- |
+| `sg` | Task on the customer with short name `sg` (or a name starting with it), titled with the first line of the message |
+| `sg: Check the invoice fri !` | Title *Check the invoice*, due Friday, high priority |
+| anything else | Task on an **Inbox** customer (created when needed), so you can move it |
+
+The message text (without quoted replies and signatures) becomes the task
+description.
+
+**Security.** A sender address alone is easy to forge, so the app also
+requires a valid DKIM signature *aligned with the From domain*, verified
+from the raw message. Microsoft 365 signs outgoing mail when DKIM is
+enabled for the domain. If it isn't, mail is rejected and the log names the
+reason (`unsigned`, or `not aligned` when only `*.onmicrosoft.com` signed it);
+enable DKIM for the domain, or as a last resort set
+`INBOUND_REQUIRE_DKIM=false` (then anyone who knows the mailbox address and
+your sender address can add tasks).
+
+**Processing.** Every poll (`INBOUND_POLL_SECONDS`, default 60) reads unread
+mail in `INBOX` and moves each message to `MyWork/Imported` or
+`MyWork/Rejected`; the log line says why one was rejected. A message that
+fails for another reason (for example a storage error) stays unread and is
+retried. Message-IDs are remembered per user, so a message is imported
+once. The sender registry and those IDs live in `/data/inbound.json`.
+Changes reach an open tab through the same `412` merge as MCP edits.

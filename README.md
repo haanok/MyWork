@@ -30,6 +30,7 @@ Each customer is an orb on a home map, and one click opens it in a helpdesk-styl
 - **Time tracking.** An optional Dynamic Island tracker logs time per open customer and resets every day.
 - **Themes.** Choose from Spacewave, Drift, Paper, Vivicta, Vivicta Pixel, Porcelain and Porcelain Dark.
 - **Your data, portable.** Import and export the whole board as JSON. Each user's data is stored as a JSON file on your own server.
+- **Email to task.** Forward a mail (or share a Teams message to Outlook) to a dedicated mailbox, with the customer in the subject, and it becomes a task. See [docs/self-hosting.md](docs/self-hosting.md#4-email-to-task).
 - **Remote MCP.** Claude (web, desktop, mobile and Claude Code) can list, search and edit customers, notes, contacts and tasks. If you edit in the browser at the same time, the changes are merged field by field.
 
 ## Getting started

@@ -12,6 +12,10 @@ import { fileURLToPath } from 'node:url';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { createStorage } from './storage.mjs';
 import { handleMcp } from './mcp.mjs';
+import {
+  createRegistry, readInboundConfig, startInboundPoller, isEmail, normalizeEmail,
+  SenderConflictError, MAX_SENDERS_PER_USER,
+} from './inbound.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +53,8 @@ const RESOURCE_METADATA_URL = `${PUBLIC_URL}/.well-known/oauth-protected-resourc
 const MCP_RESOURCE = `${PUBLIC_URL}/mcp`;
 
 const storage = createStorage(DATA_DIR);
+const INBOUND = readInboundConfig();
+const inboundRegistry = createRegistry(DATA_DIR);
 
 // The discovery URL may only be overridden outside production (used by the
 // tests to point at a local JWKS). In production it is always derived from
@@ -275,6 +281,54 @@ async function handleMcpInfo(req, res) {
     : { enabled: false }, { 'Cache-Control': 'no-store' });
 }
 
+// Email-to-task settings for the signed-in user: the address to send to and
+// the sender addresses this user has registered.
+async function handleInbound(req, res) {
+  if (req.method !== 'GET' && req.method !== 'PUT') {
+    send(res, 405, '', { Allow: 'GET, PUT' });
+    return;
+  }
+  const sub = await authenticate(req);
+  if (req.method === 'PUT') {
+    if (!INBOUND.enabled) {
+      sendText(res, 409, 'Email inbox is not configured on the server.');
+      return;
+    }
+    let body;
+    try {
+      body = JSON.parse((await readBody(req)).toString('utf8'));
+    } catch {
+      sendText(res, 400, 'Request body must be valid JSON.');
+      return;
+    }
+    const senders = Array.isArray(body?.senders) ? body.senders.map(normalizeEmail).filter(Boolean) : null;
+    if (!senders || senders.some((email) => !isEmail(email))) {
+      sendText(res, 400, 'senders must be a list of email addresses.');
+      return;
+    }
+    if (senders.length > MAX_SENDERS_PER_USER) {
+      sendText(res, 400, `At most ${MAX_SENDERS_PER_USER} sender addresses.`);
+      return;
+    }
+    if (senders.includes(normalizeEmail(INBOUND.address))) {
+      sendText(res, 400, 'The inbox address itself cannot be a sender.');
+      return;
+    }
+    try {
+      await inboundRegistry.setSenders(sub, senders);
+    } catch (error) {
+      if (error instanceof SenderConflictError) {
+        sendText(res, 409, error.message);
+        return;
+      }
+      throw error;
+    }
+  }
+  sendJson(res, 200, INBOUND.enabled
+    ? { enabled: true, address: INBOUND.address, senders: await inboundRegistry.sendersOf(sub), requireDkim: INBOUND.requireDkim }
+    : { enabled: false }, { 'Cache-Control': 'no-store' });
+}
+
 // RFC 9728 protected resource metadata: tells MCP clients (Claude) which
 // authorization server issues tokens for /mcp.
 function handleResourceMetadata(req, res) {
@@ -407,6 +461,7 @@ async function route(req, res) {
   if (pathname === '/healthz') return sendText(res, 200, 'ok');
   if (pathname === '/api/data') return handleData(req, res);
   if (pathname === '/api/mcp') return handleMcpInfo(req, res);
+  if (pathname === '/api/inbound') return handleInbound(req, res);
   if (MCP_ENABLED) {
     if (pathname === '/mcp') return handleMcpRoute(req, res);
     if (pathname === '/.well-known/oauth-protected-resource'
@@ -454,6 +509,8 @@ server.listen(PORT, () => {
   getOidc().catch((error) => console.error('Initial OIDC discovery failed (will retry):', error.message));
 });
 
+const stopInbound = startInboundPoller(INBOUND, { registry: inboundRegistry, storage });
+
 for (const signal of ['SIGTERM', 'SIGINT']) {
-  process.on(signal, () => server.close(() => process.exit(0)));
+  process.on(signal, () => { stopInbound(); server.close(() => process.exit(0)); });
 }

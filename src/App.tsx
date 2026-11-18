@@ -3,8 +3,9 @@ import { CustomerWorkspace, type WorkspaceLayout } from './CustomerWorkspace';
 import { AuroraSurface } from './AuroraSurface';
 import { DriftSurface } from './DriftSurface';
 import { today } from './dates';
-import { fetchMcpInfo, type McpInfo } from './api';
-import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
+import { fetchInboundInfo, fetchMcpInfo, type InboundInfo, type McpInfo } from './api';
+import { EmailInboxDialog } from './EmailInbox';
+import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMail, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
 import { McpConnectDialog } from './McpConnect';
 import { TimeSummaryDialog, TimeTrackerPanel } from './TimeTracker';
 import { ToastStack, useToastStack } from './ToastStack';
@@ -99,6 +100,8 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [mcpInfo, setMcpInfo] = useState<McpInfo | null>(null);
   const [showMcp, setShowMcp] = useState(false);
+  const [inboundInfo, setInboundInfo] = useState<InboundInfo | null>(null);
+  const [showInbound, setShowInbound] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddInitialText, setQuickAddInitialText] = useState('');
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
@@ -140,10 +143,12 @@ export default function App() {
   useEffect(() => {
     if (import.meta.env.DEV) {
       setMcpInfo({ enabled: true, url: 'https://mywork.example.com/mcp', clientId: 'example-client-id', issuer: 'https://id.example.com' });
+      setInboundInfo({ enabled: true, address: 'mywork@example.com', senders: [], requireDkim: true });
       return;
     }
     let active = true;
     void fetchMcpInfo().then((info) => { if (active) setMcpInfo(info); });
+    void fetchInboundInfo().then((info) => { if (active) setInboundInfo(info); });
     return () => { active = false; };
   }, []);
 
@@ -507,6 +512,12 @@ export default function App() {
                     Connect AI assistant…
                   </button>
                 )}
+                {inboundInfo?.enabled && (
+                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); setShowInbound(true); }}>
+                    <IconMail width={16} height={16} />
+                    Email to task…
+                  </button>
+                )}
                 <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); exportJson(); }}>
                   <IconDownload width={16} height={16} />
                   Export JSON
@@ -613,6 +624,9 @@ export default function App() {
       )}
 
       {showMcp && mcpInfo?.enabled && <McpConnectDialog info={mcpInfo} onClose={() => setShowMcp(false)} />}
+      {showInbound && inboundInfo?.enabled && (
+        <EmailInboxDialog info={inboundInfo} onClose={() => setShowInbound(false)} onSaved={setInboundInfo} />
+      )}
       {showTimeSummary && (
         <TimeSummaryDialog
           state={tracker.state}

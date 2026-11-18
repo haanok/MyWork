@@ -551,3 +551,55 @@ test('MCP and web round-trip customer handovers, waiting details and independent
   await call('update_customer', { customer: customer.id, nextStep: '' });
   assert.equal((await call('get_customer', { customer: customer.id })).value.nextStep, undefined);
 });
+
+test('/api/inbound is off without IMAP settings', async () => {
+  assert.equal((await request('GET', '/api/inbound')).status, 401);
+  const res = await request('GET', '/api/inbound', { token: await sign() });
+  assert.equal(res.status, 200);
+  assert.deepEqual(JSON.parse(res.body), { enabled: false });
+  const put = await request('PUT', '/api/inbound', { token: await sign(), body: JSON.stringify({ senders: ['a@b.example'] }) });
+  assert.equal(put.status, 409);
+});
+
+test('/api/inbound registers sender addresses per user', async () => {
+  const port = await freePort();
+  const mail = await startApp({
+    PORT: String(port),
+    DATA_DIR: dataDir,
+    DIST_DIR: distDir,
+    POCKET_ID_URL: ISSUER,
+    OIDC_CLIENT_ID: CLIENT_ID,
+    OIDC_DISCOVERY_URL: `http://127.0.0.1:${idpPort}/.well-known/openid-configuration`,
+    INBOUND_IMAP_USER: 'mywork@inbox.example',
+    INBOUND_IMAP_PASSWORD: 'synthetic-test-password',
+    INBOUND_POLL_SECONDS: '0',
+  });
+  const saved = appPort;
+  appPort = port;
+  const put = async (senders, sub = SUB) => request('PUT', '/api/inbound', {
+    token: await sign({}, { sub }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ senders }),
+  });
+  try {
+    const empty = JSON.parse((await request('GET', '/api/inbound', { token: await sign() })).body);
+    assert.deepEqual(empty, { enabled: true, address: 'mywork@inbox.example', senders: [], requireDkim: true });
+
+    const saved1 = await put(['Alex@Consulting.example', 'alex@consulting.example']);
+    assert.equal(saved1.status, 200);
+    assert.deepEqual(JSON.parse(saved1.body).senders, ['alex@consulting.example']);
+
+    assert.equal((await put(['not an email'])).status, 400);
+    assert.equal((await put(['mywork@inbox.example'])).status, 400);
+    const taken = await put(['alex@consulting.example'], MCP_SUB);
+    assert.equal(taken.status, 409);
+    assert.match(taken.body, /another user/);
+
+    const stored = JSON.parse(await fs.readFile(path.join(dataDir, 'inbound.json'), 'utf8'));
+    assert.equal(stored.senders['alex@consulting.example'], SUB);
+    assert.deepEqual(JSON.parse((await put([])).body).senders, []);
+  } finally {
+    appPort = saved;
+    mail.child.kill();
+  }
+});
