@@ -10,6 +10,7 @@ import { dkimSign } from 'mailauth';
 import { createStorage } from '../storage.mjs';
 import {
   createRegistry, processMessage, parseSubject, stripSubjectPrefixes, cleanBody, SenderConflictError,
+  readInboundConfig, parseNightHours, nextPollDelayMs, retentionCutoff,
 } from '../inbound.mjs';
 
 const SUB = '3f0c1a52-8d4e-4b8a-9c3f-1d2e3f4a5b6c';
@@ -183,4 +184,37 @@ test('a sender address belongs to one user only', async () => {
   assert.deepEqual(await registry.sendersOf(SUB), [SENDER]);
   assert.deepEqual(await registry.setSenders(OTHER_SUB, ['b@other.example']), ['b@other.example']);
   assert.equal(await registry.ownerOf('B@Other.example'), OTHER_SUB);
+});
+
+test('night hours poll hourly and resume the day rate when the night ends', () => {
+  const config = readInboundConfig({ INBOUND_IMAP_USER: 'u', INBOUND_IMAP_PASSWORD: 'p' });
+  assert.deepEqual(config.nightHours, { start: 22, end: 7 });
+  const at = (h, m = 0) => new Date(2026, 10, 18, h, m, 0);
+  assert.equal(nextPollDelayMs(config, at(9)), 60_000);
+  assert.equal(nextPollDelayMs(config, at(21, 59)), 60_000);
+  assert.equal(nextPollDelayMs(config, at(22)), 3_600_000);
+  assert.equal(nextPollDelayMs(config, at(2, 30)), 3_600_000);
+  // 06:30 → next poll at 07:00, not 07:30.
+  assert.equal(nextPollDelayMs(config, at(6, 30)), 30 * 60_000);
+  assert.equal(nextPollDelayMs(config, at(6, 59)), 60_000);
+  assert.equal(nextPollDelayMs(config, at(7)), 60_000);
+
+  const off = readInboundConfig({ INBOUND_IMAP_USER: 'u', INBOUND_IMAP_PASSWORD: 'p', INBOUND_NIGHT_HOURS: '' });
+  assert.equal(off.nightHours, null);
+  assert.equal(nextPollDelayMs(off, at(2)), 60_000);
+
+  assert.deepEqual(parseNightHours('1-5'), { start: 1, end: 5 });
+  assert.equal(parseNightHours('22-22'), null);
+  assert.equal(parseNightHours('25-07'), null);
+  const sameDay = { pollSeconds: 60, nightHours: parseNightHours('1-5'), nightPollSeconds: 3600 };
+  assert.equal(nextPollDelayMs(sameDay, at(0, 30)), 60_000);
+  assert.equal(nextPollDelayMs(sameDay, at(4, 30)), 30 * 60_000);
+});
+
+test('processed mail is kept for INBOUND_RETENTION_DAYS (default 30, 0 = forever)', () => {
+  const env = { INBOUND_IMAP_USER: 'u', INBOUND_IMAP_PASSWORD: 'p' };
+  assert.equal(readInboundConfig(env).retentionDays, 30);
+  assert.deepEqual(retentionCutoff(30, NOW), new Date(2026, 9, 19, 9, 0, 0));
+  assert.equal(retentionCutoff(0, NOW), null);
+  assert.equal(retentionCutoff(readInboundConfig({ ...env, INBOUND_RETENTION_DAYS: '0' }).retentionDays, NOW), null);
 });

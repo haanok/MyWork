@@ -338,8 +338,42 @@ export function readInboundConfig(env = process.env) {
     password,
     address: env.INBOUND_ADDRESS?.trim() || user,
     pollSeconds: Number(env.INBOUND_POLL_SECONDS ?? 60),
+    nightHours: parseNightHours(env.INBOUND_NIGHT_HOURS ?? '22-07'),
+    nightPollSeconds: Number(env.INBOUND_NIGHT_POLL_SECONDS ?? 3600),
+    retentionDays: Number(env.INBOUND_RETENTION_DAYS ?? 30),
     requireDkim: !/^(0|false|no)$/i.test(env.INBOUND_REQUIRE_DKIM?.trim() || 'true'),
   };
+}
+
+/** Parses "22-07" (local hours, end exclusive) into { start, end }; empty or invalid → null (no night mode). */
+export function parseNightHours(value) {
+  const match = /^\s*(\d{1,2})\s*-\s*(\d{1,2})\s*$/.exec(String(value ?? ''));
+  if (!match) return null;
+  const start = Number(match[1]);
+  const end = Number(match[2]);
+  if (start > 23 || end > 23 || start === end) return null;
+  return { start, end };
+}
+
+function inNight(hours, hour) {
+  return hours.start < hours.end
+    ? hour >= hours.start && hour < hours.end
+    : hour >= hours.start || hour < hours.end;
+}
+
+/**
+ * Milliseconds until the next poll. During night hours (local time, TZ) the
+ * night interval applies, but never past the end of the night, so the first
+ * daytime poll happens at e.g. 07:00 sharp.
+ */
+export function nextPollDelayMs(config, now = new Date()) {
+  const day = Math.max(15, config.pollSeconds) * 1000;
+  const hours = config.nightHours;
+  if (!hours || !(config.nightPollSeconds > config.pollSeconds) || !inNight(hours, now.getHours())) return day;
+  const nightEnd = new Date(now);
+  nightEnd.setHours(hours.end, 0, 0, 0);
+  if (nightEnd <= now) nightEnd.setDate(nightEnd.getDate() + 1);
+  return Math.max(day, Math.min(config.nightPollSeconds * 1000, nightEnd - now));
 }
 
 async function ensureFolder(client, folder) {
@@ -350,8 +384,38 @@ async function ensureFolder(client, folder) {
   }
 }
 
-/** Connects, imports every unseen message in INBOX, and logs out. */
-export async function pollOnce(config, deps) {
+/** Cut-off for retention: messages that arrived before this date are deleted; null = keep forever. */
+export function retentionCutoff(retentionDays, now = new Date()) {
+  if (!(retentionDays > 0)) return null;
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - retentionDays);
+  return cutoff;
+}
+
+/** Permanently deletes messages that arrived before `cutoff` from the Imported/Rejected folders. Never touches INBOX. */
+async function purgeOldMessages(client, cutoff) {
+  let deleted = 0;
+  for (const folder of [IMPORTED_FOLDER, REJECTED_FOLDER]) {
+    const lock = await client.getMailboxLock(folder);
+    try {
+      const uids = await client.search({ before: cutoff }, { uid: true });
+      if (uids?.length) {
+        await client.messageDelete(uids, { uid: true });
+        deleted += uids.length;
+      }
+    } finally {
+      lock.release();
+    }
+  }
+  return deleted;
+}
+
+/**
+ * Connects, imports every unseen message in INBOX, and logs out. With
+ * `options.purge`, also deletes old messages from the MyWork folders
+ * (INBOUND_RETENTION_DAYS); a failed purge is logged, not thrown.
+ */
+export async function pollOnce(config, deps, options = {}) {
   const { ImapFlow } = await import('imapflow');
   const client = new ImapFlow({
     host: config.host,
@@ -393,6 +457,15 @@ export async function pollOnce(config, deps) {
     } finally {
       lock.release();
     }
+    const cutoff = options.purge ? retentionCutoff(config.retentionDays) : null;
+    if (cutoff) {
+      try {
+        summary.purged = await purgeOldMessages(client, cutoff);
+        if (summary.purged) console.log(`Inbound mail: deleted ${summary.purged} message(s) older than ${config.retentionDays} days from MyWork folders`);
+      } catch (error) {
+        console.error('Inbound mail cleanup failed:', error.message);
+      }
+    }
   } finally {
     await client.logout().catch(() => client.close());
   }
@@ -405,18 +478,22 @@ export function startInboundPoller(config, deps) {
   let timer;
   let stopped = false;
   let failures = 0;
+  let lastPurge = 0;
   const tick = async () => {
     try {
-      await pollOnce(config, deps);
+      // Clean up at most once a day (first successful poll after start, then every 24 h).
+      const purge = config.retentionDays > 0 && Date.now() - lastPurge >= 24 * 3600 * 1000;
+      await pollOnce(config, deps, { purge });
+      if (purge) lastPurge = Date.now(); // a failed cleanup is retried tomorrow, not every poll
       if (failures) console.log('Inbound mail: connection restored');
       failures = 0;
     } catch (error) {
       failures++;
       if (failures === 1 || failures % 30 === 0) console.error(`Inbound mail poll failed (${failures}x):`, error.message);
     }
-    if (!stopped) timer = setTimeout(tick, Math.max(15, config.pollSeconds) * 1000);
+    if (!stopped) timer = setTimeout(tick, nextPollDelayMs(config));
   };
   timer = setTimeout(tick, 2000);
-  console.log(`Inbound mail enabled: ${config.address} via ${config.host} every ${config.pollSeconds}s${config.requireDkim ? '' : ' (DKIM NOT required)'}`);
+  console.log(`Inbound mail enabled: ${config.address} via ${config.host} every ${config.pollSeconds}s${config.nightHours && config.nightPollSeconds > config.pollSeconds ? ` (${config.nightPollSeconds}s between ${String(config.nightHours.start).padStart(2, '0')}-${String(config.nightHours.end).padStart(2, '0')})` : ''}${config.retentionDays > 0 ? `, keeping MyWork folders ${config.retentionDays} days` : ''}${config.requireDkim ? '' : ' (DKIM NOT required)'}`);
   return () => { stopped = true; clearTimeout(timer); };
 }

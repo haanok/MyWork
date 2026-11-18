@@ -252,10 +252,17 @@ enable DKIM for the domain, or as a last resort set
 `INBOUND_REQUIRE_DKIM=false` (then anyone who knows the mailbox address and
 your sender address can add tasks).
 
-**Processing.** Every poll (`INBOUND_POLL_SECONDS`, default 60) reads unread
+**Processing.** Every poll (`INBOUND_POLL_SECONDS`, default 60; at night,
+`INBOUND_NIGHT_HOURS` local time, default `22-07`, every
+`INBOUND_NIGHT_POLL_SECONDS`, default 3600, with the first day poll at the end
+of the night; set `INBOUND_NIGHT_HOURS=` to disable) reads unread
 mail in `INBOX` and moves each message to `MyWork/Imported` or
 `MyWork/Rejected`; the log line says why one was rejected. A message that
 fails for another reason (for example a storage error) stays unread and is
-retried. Message-IDs are remembered per user, so a message is imported
+retried. Once a day, messages that arrived more than
+`INBOUND_RETENTION_DAYS` (default 30; `0` keeps them forever) ago are
+permanently deleted from the two `MyWork` folders; `INBOX` is never cleaned.
+The task keeps the email text, but the original message and its attachments
+are gone after that. Message-IDs are remembered per user, so a message is imported
 once. The sender registry and those IDs live in `/data/inbound.json`.
 Changes reach an open tab through the same `412` merge as MCP edits.
