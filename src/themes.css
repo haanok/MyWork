@@ -1688,17 +1688,24 @@
   box-shadow: 0 0 8px rgb(46 255 181 / 55%);
 }
 
-/* Map: obsidian coastal midnight with a crisp neon hairline grid and luminous Vice horizon. */
+/* Map: 3D Vice City neon boulevard (default) or simple neon horizon backdrop. */
 .stage[data-home-theme='vice'] {
   position: relative;
   isolation: isolate;
+  background:
+    radial-gradient(ellipse 90% 48% at 50% 66%, rgb(255 42 157 / 18%) 0%, transparent 64%),
+    radial-gradient(ellipse 80% 48% at 24% 62%, rgb(0 240 255 / 14%) 0%, transparent 62%),
+    linear-gradient(180deg, #040309 0%, #080514 54%, #110820 100%);
+}
+
+.stage[data-home-theme='vice'][data-vice-backdrop='simple'] {
   background:
     radial-gradient(ellipse 98% 46% at 50% 106%, rgb(255 42 157 / 22%) 0%, transparent 64%),
     radial-gradient(ellipse 84% 48% at 18% 92%, rgb(0 240 255 / 15%) 0%, transparent 62%),
     linear-gradient(180deg, #040309 0%, #080612 56%, #180b29 100%);
 }
 
-.stage[data-home-theme='vice']::before {
+.stage[data-home-theme='vice'][data-vice-backdrop='simple']::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -1711,6 +1718,18 @@
 }
 
 .stage[data-home-theme='vice'] .aurora-sky {
+  inset: -12px;
+  width: calc(100% + 24px);
+  height: calc(100% + 24px);
+  filter: blur(3.2px) saturate(1.22);
+  opacity: 0.96;
+  mix-blend-mode: normal;
+}
+
+.stage[data-home-theme='vice'][data-vice-backdrop='simple'] .aurora-sky {
+  inset: 0;
+  width: 100%;
+  height: 100%;
   filter: blur(9px) saturate(1.25);
   opacity: 0.96;
   mix-blend-mode: screen;
@@ -1720,12 +1739,12 @@
   background: transparent;
 }
 
-/* Customers: smoked-obsidian discs with luminous neon hairline rims and status underglow. */
+/* Customers: crisp smoked-obsidian discs with luminous neon hairline rims and status underglow. */
 .stage[data-home-theme='vice'] .lamp {
   border: 1.5px solid rgb(0 240 255 / 78%);
   background:
     radial-gradient(circle at 50% -14%, rgb(0 240 255 / 30%), transparent 60%),
-    linear-gradient(180deg, rgb(18 14 36 / 90%) 0%, rgb(9 7 18 / 95%) 100%);
+    linear-gradient(180deg, rgb(18 14 36 / 84%) 0%, rgb(9 7 18 / 92%) 100%);
   color: #f7f4ff;
   text-shadow: 0 0 12px rgb(0 240 255 / 45%);
   box-shadow:
@@ -1755,7 +1774,7 @@
   border-color: rgb(185 117 255 / 84%);
   background:
     radial-gradient(circle at 50% -14%, rgb(185 117 255 / 32%), transparent 60%),
-    linear-gradient(180deg, rgb(24 16 48 / 92%) 0%, rgb(11 8 24 / 96%) 100%);
+    linear-gradient(180deg, rgb(24 16 48 / 74%) 0%, rgb(11 8 24 / 82%) 100%);
   text-shadow: 0 0 12px rgb(185 117 255 / 48%);
   box-shadow:
     inset 0 1px 0 rgb(228 200 255 / 40%),
@@ -1777,7 +1796,7 @@
   border-color: rgb(255 42 157 / 92%);
   background:
     radial-gradient(circle at 50% -14%, rgb(255 42 157 / 36%), transparent 62%),
-    linear-gradient(180deg, rgb(42 12 32 / 93%) 0%, rgb(18 6 16 / 96%) 100%);
+    linear-gradient(180deg, rgb(42 12 32 / 76%) 0%, rgb(18 6 16 / 84%) 100%);
   text-shadow: 0 0 12px rgb(255 42 157 / 52%);
   box-shadow:
     inset 0 1px 0 rgb(255 186 226 / 42%),
@@ -1797,7 +1816,7 @@
 
 .stage[data-home-theme='vice'] .lamp-clear .lamp {
   border-color: rgb(46 255 181 / 42%);
-  background: linear-gradient(180deg, rgb(14 14 28 / 84%) 0%, rgb(9 8 18 / 90%) 100%);
+  background: linear-gradient(180deg, rgb(14 14 28 / 68%) 0%, rgb(9 8 18 / 76%) 100%);
   color: #b7c8d6;
   text-shadow: none;
   box-shadow:
