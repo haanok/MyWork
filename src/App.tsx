@@ -34,11 +34,11 @@ function useCompact() {
 }
 
 const NEXT_STATUS = { open: 'doing', doing: 'done', waiting: 'doing', done: 'open' } as const;
-const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'vivicta-pixel', 'porcelain', 'porcelain-dark'] as const;
+const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'vice', 'vivicta-pixel', 'porcelain', 'porcelain-dark'] as const;
 const MAP_CENTER_DRIFT_KEY = 'mywork-map-center-drift';
 const WORKSPACE_LAYOUT_KEY = 'mywork-workspace-layout';
 type HomeTheme = (typeof HOME_THEMES)[number];
-const THEME_LABELS: Record<HomeTheme, string> = { spacewave: 'Spacewave', drift: 'Drift', paper: 'Paper', vivicta: 'Vivicta', 'vivicta-pixel': 'Vivicta Pixel', porcelain: 'Porcelain', 'porcelain-dark': 'Porcelain Dark' };
+const THEME_LABELS: Record<HomeTheme, string> = { spacewave: 'Spacewave', drift: 'Drift', paper: 'Paper', vivicta: 'Vivicta', vice: 'Vice', 'vivicta-pixel': 'Vivicta Pixel', porcelain: 'Porcelain', 'porcelain-dark': 'Porcelain Dark' };
 type View = 'map' | 'today';
 
 function savedCenterDrift() {
@@ -551,6 +551,7 @@ export default function App() {
       >
         {homeTheme === 'drift' && <DriftSurface water={!selected && view === 'map'} />}
         {homeTheme === 'vivicta' && <AuroraSurface active={!selected && view === 'map'} />}
+        {homeTheme === 'vice' && <AuroraSurface active={!selected && view === 'map'} variant="vice" />}
         {homeTheme === 'vivicta-pixel' && <AuroraSurface active={!selected && view === 'map'} variant="vivicta-pixel" />}
         {homeTheme === 'porcelain' && <AuroraSurface active={!selected && view === 'map'} variant="porcelain-light" />}
         {homeTheme === 'porcelain-dark' && <AuroraSurface active={!selected && view === 'map'} variant="porcelain-dark" />}
