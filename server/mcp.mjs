@@ -9,7 +9,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod';
 
 const CUSTOMER_STATUSES = ['active', 'waiting', 'paused', 'archived'];
-const TASK_STATUSES = ['open', 'doing', 'done'];
+const TASK_STATUSES = ['open', 'doing', 'waiting', 'done'];
 const PRIORITIES = ['normal', 'high'];
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
 
@@ -67,6 +67,9 @@ function taskView(data, task) {
     status: task.status,
     priority: task.priority,
     ...(task.due ? { due: task.due } : {}),
+    ...(task.plannedFor ? { plannedFor: task.plannedFor } : {}),
+    ...(task.waitingFor ? { waitingFor: task.waitingFor } : {}),
+    ...(task.followUp ? { followUp: task.followUp } : {}),
     ...(task.description ? { description: task.description } : {}),
     ...(task.solution ? { solution: task.solution } : {}),
     ...(task.doneAt ? { doneAt: task.doneAt } : {}),
@@ -81,6 +84,7 @@ function customerSummary(data, customer) {
     name: customer.name,
     ...(customer.shortName ? { shortName: customer.shortName } : {}),
     status: customer.status,
+    ...(customer.nextStep ? { nextStep: customer.nextStep } : {}),
     openTasks: open.length,
     overdueTasks: open.filter((t) => t.due && t.due < today).length,
     touchedAt: customer.touchedAt,
@@ -96,7 +100,9 @@ function buildServer(sub, storage) {
     {
       instructions:
         'MyWork is a single consultant\'s customer workspace: customers with notes, contacts and a status, '
-        + 'and tasks per customer. Refer to customers by name, short name or id. Dates are YYYY-MM-DD.',
+        + 'and tasks per customer. Refer to customers by name, short name or id. Dates are YYYY-MM-DD. '
+        + 'nextStep is the customer handover note. Waiting tasks use waitingFor and followUp. '
+        + 'plannedFor is a workday, separate from the due deadline; unfinished plans carry forward.',
     },
   );
 
@@ -148,7 +154,7 @@ function buildServer(sub, storage) {
     annotations: readOnly,
   }, reader((data, { customer }) => {
     const c = resolveCustomer(data, customer);
-    const rank = { doing: 0, open: 1, done: 2 };
+    const rank = { doing: 0, open: 1, waiting: 2, done: 3 };
     const tasks = data.tasks
       .filter((t) => t.customerId === c.id)
       .sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3) || (a.due ?? '9').localeCompare(b.due ?? '9'))
@@ -164,22 +170,26 @@ function buildServer(sub, storage) {
       status: z.enum([...TASK_STATUSES, 'not_done', 'all']).optional().describe('Default not_done'),
       priority: z.enum(PRIORITIES).optional(),
       due_before: DATE.optional().describe('Only tasks due on or before this date'),
+      planned_before: DATE.optional().describe('Only tasks planned on or before this date, including unfinished earlier plans'),
+      follow_up_before: DATE.optional().describe('Only waiting tasks with a follow-up on or before this date'),
     },
     annotations: readOnly,
-  }, reader((data, { customer, status = 'not_done', priority, due_before: dueBefore }) => {
+  }, reader((data, { customer, status = 'not_done', priority, due_before: dueBefore, planned_before: plannedBefore, follow_up_before: followUpBefore }) => {
     const customerId = customer ? resolveCustomer(data, customer).id : null;
     return data.tasks
       .filter((t) => !customerId || t.customerId === customerId)
       .filter((t) => status === 'all' || (status === 'not_done' ? t.status !== 'done' : t.status === status))
       .filter((t) => !priority || t.priority === priority)
       .filter((t) => !dueBefore || (t.due && t.due <= dueBefore))
+      .filter((t) => !plannedBefore || (t.plannedFor && t.plannedFor <= plannedBefore))
+      .filter((t) => !followUpBefore || (t.status === 'waiting' && t.followUp && t.followUp <= followUpBefore))
       .sort((a, b) => (a.due ?? '9').localeCompare(b.due ?? '9'))
       .map((t) => taskView(data, t));
   }));
 
   server.registerTool('search', {
     title: 'Search',
-    description: 'Case-insensitive text search across customer names, notes, contacts, and task titles, descriptions and solutions.',
+    description: 'Case-insensitive text search across customer names, next steps, notes, contacts, and task titles, descriptions, solutions and waiting details.',
     inputSchema: { query: z.string().min(1) },
     annotations: readOnly,
   }, reader((data, { query }) => {
@@ -187,9 +197,9 @@ function buildServer(sub, storage) {
     const has = (value) => typeof value === 'string' && value.toLowerCase().includes(q);
     return {
       customers: data.customers
-        .filter((c) => has(c.name) || has(c.notes) || (c.contacts ?? []).some((k) => has(k.name) || has(k.detail)))
+        .filter((c) => has(c.name) || has(c.nextStep) || has(c.notes) || (c.contacts ?? []).some((k) => has(k.name) || has(k.detail)))
         .map((c) => customerSummary(data, c)),
-      tasks: data.tasks.filter((t) => has(t.title) || has(t.description) || has(t.solution)).map((t) => taskView(data, t)),
+      tasks: data.tasks.filter((t) => has(t.title) || has(t.description) || has(t.solution) || has(t.waitingFor)).map((t) => taskView(data, t)),
     };
   }));
 
@@ -201,11 +211,12 @@ function buildServer(sub, storage) {
       shortName: shortNameSchema.optional(),
       status: z.enum(CUSTOMER_STATUSES).optional(),
       notes: z.string().optional(),
+      nextStep: z.string().optional().describe('Where to continue when returning to this customer'),
     },
     annotations: additive,
-  }, writer((data, { name, shortName, status = 'active', notes = '' }, stamp) => {
+  }, writer((data, { name, shortName, status = 'active', notes = '', nextStep }, stamp) => {
     const customer = {
-      id: crypto.randomUUID(), name, ...(shortName ? { shortName } : {}), status, notes, contacts: [], createdAt: stamp, touchedAt: stamp,
+      id: crypto.randomUUID(), name, ...(shortName ? { shortName } : {}), status, notes, ...(nextStep ? { nextStep } : {}), contacts: [], createdAt: stamp, touchedAt: stamp,
     };
     data.customers.push(customer);
     return customerSummary(data, customer);
@@ -213,22 +224,24 @@ function buildServer(sub, storage) {
 
   server.registerTool('update_customer', {
     title: 'Update customer',
-    description: 'Rename a customer, set its short name (empty string removes it), change its status, or replace its notes entirely. To add to the notes, use append_note.',
+    description: 'Rename a customer, set its short name, status or nextStep handover, or replace its notes entirely. Empty nextStep or shortName clears it. To add to notes, use append_note.',
     inputSchema: {
       customer: z.string().min(1).describe('Customer name or id'),
       name: z.string().trim().min(1).optional(),
       shortName: z.union([shortNameSchema, z.literal('')]).optional(),
       status: z.enum(CUSTOMER_STATUSES).optional(),
       notes: z.string().optional().describe('Replaces all existing notes'),
+      nextStep: z.string().optional().describe('Where to continue; empty string clears it'),
     },
     annotations: { ...additive, destructiveHint: true },
-  }, writer((data, { customer, name, shortName, status, notes }, stamp) => {
+  }, writer((data, { customer, name, shortName, status, notes, nextStep }, stamp) => {
     const c = resolveCustomer(data, customer);
     if (name !== undefined) c.name = name;
     if (shortName === '') delete c.shortName;
     else if (shortName !== undefined) c.shortName = shortName;
     if (status !== undefined) c.status = status;
     if (notes !== undefined) c.notes = notes;
+    if (nextStep !== undefined) { if (nextStep) c.nextStep = nextStep; else delete c.nextStep; }
     c.touchedAt = stamp;
     return customerSummary(data, c);
   }));
@@ -274,19 +287,27 @@ function buildServer(sub, storage) {
       title: z.string().trim().min(1),
       description: z.string().optional(),
       due: DATE.optional(),
+      status: z.enum(TASK_STATUSES).optional(),
+      plannedFor: DATE.optional().describe('Planned workday; does not change the deadline'),
+      waitingFor: z.string().optional().describe('Who or what the task is waiting for'),
+      followUp: DATE.optional().describe('Follow-up date for a waiting task'),
       priority: z.enum(PRIORITIES).optional(),
     },
     annotations: additive,
-  }, writer((data, { customer, title, description, due, priority = 'normal' }, stamp) => {
+  }, writer((data, { customer, title, description, due, status = 'open', plannedFor, waitingFor, followUp, priority = 'normal' }, stamp) => {
     const c = resolveCustomer(data, customer);
     const task = {
       id: crypto.randomUUID(),
       customerId: c.id,
       title,
       ...(description ? { description } : {}),
-      status: 'open',
+      status,
       priority,
       ...(due ? { due } : {}),
+      ...(plannedFor ? { plannedFor } : {}),
+      ...(waitingFor ? { waitingFor } : {}),
+      ...(followUp ? { followUp } : {}),
+      ...(status === 'done' ? { doneAt: stamp } : {}),
       createdAt: stamp,
       updatedAt: stamp,
     };
@@ -297,22 +318,36 @@ function buildServer(sub, storage) {
 
   server.registerTool('update_task', {
     title: 'Update task',
-    description: 'Change a task: title, status (open, doing, done), due date, priority, description or solution (what was done, for later reference). Pass an empty string to clear due, description or solution.',
+    description: 'Change a task: title, status (open, doing, waiting, done), deadline (due), planned workday (plannedFor), waitingFor, followUp, priority, description or solution, or move it to another customer. Pass an empty string to clear any optional text or date. Planning does not change the deadline.',
     inputSchema: {
       task_id: z.string().min(1),
       title: z.string().trim().min(1).optional(),
       status: z.enum(TASK_STATUSES).optional(),
       due: z.union([DATE, z.literal('')]).optional(),
+      plannedFor: z.union([DATE, z.literal('')]).optional(),
+      waitingFor: z.string().optional(),
+      followUp: z.union([DATE, z.literal('')]).optional(),
       priority: z.enum(PRIORITIES).optional(),
       description: z.string().optional(),
       solution: z.string().optional().describe('What was done to resolve the task'),
+      customer: z.string().min(1).optional().describe('Move the task to this customer (name, short name or id)'),
     },
     annotations: additive,
-  }, writer((data, { task_id: id, title, status, due, priority, description, solution }, stamp) => {
+  }, writer((data, { task_id: id, title, status, due, plannedFor, waitingFor, followUp, priority, description, solution, customer }, stamp) => {
     const task = findTask(data, id);
+    if (customer !== undefined) {
+      const target = resolveCustomer(data, customer);
+      if (target.id !== task.customerId) {
+        touch(data, task.customerId, stamp);
+        task.customerId = target.id;
+      }
+    }
     if (title !== undefined) task.title = title;
     if (priority !== undefined) task.priority = priority;
     if (due !== undefined) { if (due) task.due = due; else delete task.due; }
+    if (plannedFor !== undefined) { if (plannedFor) task.plannedFor = plannedFor; else delete task.plannedFor; }
+    if (waitingFor !== undefined) { if (waitingFor) task.waitingFor = waitingFor; else delete task.waitingFor; }
+    if (followUp !== undefined) { if (followUp) task.followUp = followUp; else delete task.followUp; }
     if (description !== undefined) { if (description) task.description = description; else delete task.description; }
     if (solution !== undefined) { if (solution) task.solution = solution; else delete task.solution; }
     if (status !== undefined) {

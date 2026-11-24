@@ -448,6 +448,7 @@ button {
 }
 
 .app[data-home-theme='drift'] .data-menu-list,
+.app[data-home-theme='drift'] .date-popover,
 .app[data-home-theme='drift'] .import-dialog,
 .app[data-home-theme='drift'] .quick-add-dialog,
 .app[data-home-theme='drift'] .mcp-dialog {
@@ -530,7 +531,7 @@ button {
   background: rgb(255 255 255 / 3%);
 }
 
-.app[data-home-theme='drift'] .data-menu-list {
+.app[data-home-theme='drift'] :is(.data-menu-list, .date-popover) {
   border: 1px solid transparent;
   background:
     radial-gradient(ellipse at var(--glass-x, 15%) var(--glass-y, 0%), rgb(255 255 255 / 9%), transparent 65%) padding-box,
@@ -1160,6 +1161,7 @@ button {
 
 .queue-summary {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   padding: 13px 0 15px;
   color: var(--space-muted);
@@ -1477,6 +1479,66 @@ button {
   margin-top: 7px;
 }
 
+.customer-next-step {
+  margin-top: 16px;
+}
+
+.customer-next-step label,
+.planning-field > span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--space-fg);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.customer-next-step textarea {
+  display: block;
+  resize: vertical;
+}
+
+.planning-field {
+  min-width: 0;
+}
+
+.planning-field small {
+  display: block;
+  margin-top: 4px;
+  color: var(--space-muted);
+  font-size: 0.75rem;
+}
+
+.task-waiting-info {
+  margin-top: 10px;
+  color: var(--space-muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.task-waiting-info p {
+  margin: 3px 0;
+}
+
+.task-waiting-info strong {
+  color: var(--space-fg);
+  font-weight: 600;
+}
+
+.task-waiting-info .follow-up-due,
+.task-date .task-plan-note {
+  color: var(--space-cyan);
+}
+
+.task-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-status-select.st-waiting {
+  border-color: var(--space-muted);
+  color: var(--space-fg);
+}
+
 .task-controls {
   display: flex;
   align-items: center;
@@ -1512,12 +1574,57 @@ button {
 .task-editor {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+/* Title and description read as one block; each later group is separated. */
+.task-editor-text {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
+.task-editor-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .task-editor textarea {
-  min-height: 80px;
+  display: block;
+  min-height: 96px;
   resize: vertical;
+}
+
+.task-editor textarea.task-editor-solution {
+  min-height: 64px;
+}
+
+.task-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
+  gap: 12px 14px;
+}
+
+.task-editor-grid .crm-field {
+  min-height: 39px;
+}
+
+/* While editing a ledger row, the editor takes over the due-date column:
+   the due date is already in the form, and the fields need the width. */
+.task-entry.is-editing:not(.is-card) .task-date {
+  display: none;
+}
+
+@media (min-width: 681px) {
+  .task-entry.is-editing:not(.is-card) .task-content {
+    grid-column: 1 / 3;
+  }
+}
+
+.task-editor-actions {
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid var(--space-line);
 }
 
 .editor-actions {
@@ -1705,25 +1812,124 @@ button {
   color: var(--space-muted);
 }
 
-.toast {
+/* ══ Toast stack (src/ToastStack.tsx) ══════════════════════════
+   Three toasts stacked, fanning into a list on hover. Tones are the
+   reference's: the front one white, the tucked ones a barely-there
+   2% grey — both the same, so they read as paper behind paper rather
+   than a darkening ramp. Where the reference separates them with a
+   soft shadow, this uses a faint hairline (no drop shadows on the
+   bench). Status icons are their own solid colours, never faded. */
+.tst {
+  /* Bencho tokens map directly to the active MyWork theme:
+     fill-on / ink → space-fg; fill-slab → space-panel;
+     font-ui → sans; pane-edge → space-line; signal → space-cyan.
+     The radius stays local and follows space-radius unless overridden. */
+  --tst-r: var(--space-radius);
   position: fixed;
   z-index: 20;
-  bottom: 20px;
+  bottom: max(20px, env(safe-area-inset-bottom));
   left: 50%;
+  width: min(380px, calc(100vw - 32px));
+  translate: -50% 0;
+  pointer-events: none;
+  font-family: var(--sans);
+  color: var(--space-fg);
+  --tst-mute: var(--space-muted);
+  --tst-wash: color-mix(in srgb, var(--space-fg) 6%, var(--space-panel));}
+
+.tst-toast {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 9px 12px 9px 16px;
-  translate: -50% 0;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 12px 12px 16px;
+  pointer-events: auto;
   border: 1px solid var(--space-line);
-  border-radius: 5px;
-  background: #182440;
-  color: var(--space-fg);
-  box-shadow: 0 10px 25px -10px rgb(0 0 0 / 75%);
+  border-radius: var(--tst-r);
+  background: var(--space-panel);
+  transform-origin: 50% 0;
+  transition: background-color 220ms ease, box-shadow 220ms ease;}
+
+/* tucked: the same near-white for both, and a faint edge so each
+   sliver has a line to read by */
+.tst:not([data-open]) .tst-toast:not([data-front]) {
+  background: color-mix(in srgb, var(--space-fg) 6%, var(--space-panel));
+  /* A long message behind a short one must stay a sliver. */
+  clip-path: inset(0 0 calc(100% - 28px) 0);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--space-fg) 6%, transparent);}
+
+.tst[data-open] { pointer-events: auto; }
+
+/* only the front one is read while stacked; the rest are slivers */
+.tst-toast > * { transition: opacity 220ms ease; }
+
+.tst:not([data-open]) .tst-toast:not([data-front]) > * { opacity: 0; }
+
+.tst-icon { flex: none; display: grid; place-items: center; }
+
+.tst-toast[data-kind="success"] .tst-icon { color: var(--space-green); }
+
+.tst-toast[data-kind="error"] .tst-icon,
+.tst-toast[data-kind="removed"] .tst-icon { color: var(--space-coral); }
+
+.tst-toast[data-kind="warning"] .tst-icon { color: var(--space-blue); }
+
+.tst-toast[data-kind="info"] .tst-icon { color: var(--tst-mute); }
+
+.tst-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.tst-text b { font-size: 14px; font-weight: 500; line-height: 18px; overflow-wrap: anywhere; letter-spacing: -0.01em; }
+
+.tst-text span { font-size: 13px; line-height: 17px; color: var(--tst-mute); overflow-wrap: anywhere; letter-spacing: 0em; }
+
+.tst-act {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tst-wash);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: scale 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  letter-spacing: 0em;}
+
+.tst-act:active { scale: 0.96; }
+
+.tst-x {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tst-mute);
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;}
+
+.tst-x:hover { background: var(--tst-wash); color: var(--space-fg); }
+
+.tst-act:focus-visible, .tst-x:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--space-cyan); }
+
+/* Keep the stack usable on touch screens and without motion. */
+@media (pointer: coarse) {
+  .tst-act { min-height: 44px; }
+  .tst-x { width: 44px; height: 44px; }
+  .tst-toast { gap: 8px; }
 }
 
-.toast .text-key {
-  font-weight: 650;
+@media (prefers-reduced-motion: reduce) {
+  .tst-toast, .tst-toast > *, .tst-act, .tst-x { transition: none; }
 }
 
 .import-dialog {
@@ -2183,6 +2389,7 @@ button {
   }
 
   .record-head { order: 0; }
+  .customer-next-step { order: 0; }
   .queue-summary { order: 1; }
   .task-queue-head { order: 2; }
   .task-list { order: 3; }
@@ -2518,6 +2725,69 @@ kbd {
   width: min(100%, 920px);
 }
 
+.today-main .queue-summary {
+  order: 0;
+}
+
+.today-planner {
+  margin-top: 16px;
+  padding-block: 14px;
+  border-block: 1px solid var(--space-line);
+}
+
+.today-planner h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.today-planner p {
+  margin: 6px 0 12px;
+  color: var(--space-muted);
+  font-size: 0.85rem;
+}
+
+.today-plan-options {
+  max-height: 280px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.today-plan-options li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 10px;
+  border-bottom: 1px solid var(--space-line);
+}
+
+.today-plan-options li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.today-plan-options strong,
+.today-plan-options span {
+  display: block;
+}
+
+.today-plan-options strong {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.today-plan-options span {
+  margin-top: 3px;
+  color: var(--space-muted);
+  font-size: 0.78rem;
+}
+
+.today-plan-options button {
+  flex-shrink: 0;
+}
+
 .today-section .task-queue-head {
   min-height: 44px;
 }
@@ -2694,7 +2964,7 @@ kbd {
   display: grid;
   flex: 1;
   min-height: 12rem;
-  grid-template-columns: repeat(3, minmax(250px, 1fr));
+  grid-template-columns: repeat(4, minmax(280px, 1fr));
   grid-template-rows: minmax(0, 1fr);
   align-items: start;
   gap: 14px;
@@ -2864,7 +3134,7 @@ kbd {
 }
 
 .task-entry.is-card .task-date {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 2;
   flex-direction: row;
   flex-wrap: wrap;
@@ -2882,8 +3152,8 @@ kbd {
 }
 
 .task-entry.is-card .task-controls {
-  grid-column: 2;
-  grid-row: 2;
+  grid-column: 1 / -1;
+  grid-row: 3;
   gap: 2px;
 }
 
@@ -2970,82 +3240,28 @@ kbd {
 }
 
 .time-tracker {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px 14px 16px;
-  border-top: 1px solid var(--space-line);
-  background: var(--space-panel);
-}
-
-.time-tracker-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  position: absolute;
+  z-index: 6;
+  top: 12px;
+  left: 50%;
+  translate: -50% 0;
+  width: min(300px, calc(100vw - 24px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
   min-width: 0;
+  pointer-events: none;
 }
 
-.time-tracker-dot {
-  flex: none;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--space-quiet);
+.time-tracker .dyn-pill { pointer-events: auto; }
+
+@media (max-width: 760px) {
+  .has-time-island .search { display: none; }
 }
 
-.time-tracker.is-running .time-tracker-dot {
-  background: var(--space-green);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--space-green) 25%, transparent);
-  animation: time-tracker-pulse 2.4s ease-in-out infinite;
-}
-
-@keyframes time-tracker-pulse {
-  50% { opacity: 0.45; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .time-tracker.is-running .time-tracker-dot { animation: none; }
-}
-
-.time-tracker-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.time-tracker-label {
-  overflow: hidden;
-  color: var(--space-muted);
-  font-size: 0.74rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.time-tracker-clock {
-  color: var(--space-fg);
-  font-size: 0.98rem;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.time-tracker-total {
-  color: var(--space-muted);
-  font-size: 0.72rem;
-  font-weight: 500;
-}
-
-.time-tracker-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.time-tracker-actions > button {
-  flex: 1;
-  min-height: 34px;
-  font-size: 0.8rem;
+@media (max-width: 680px) {
+  .has-time-island .wordmark { margin-left: auto; }
+  .time-tracker { top: 9px; }
 }
 
 .time-summary-dialog {
@@ -3159,17 +3375,595 @@ kbd {
   flex-wrap: wrap;
 }
 
-@media (max-width: 680px) {
-  .time-tracker {
-    position: static;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 13px;
-  }
+/* ══ Dynamic island ══════════════════════════════════════
+   See src/DynamicIsland.tsx (adapted from Bencho). The frame is sized to the largest the
+   island opens to, so the wall never rescales it mid-morph;
+   the pill sits in its middle and grows out from there. */
+.dyn {
+  width: 300px;
+  max-width: 100%;
+  height: 182px;
+  padding: 16px 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  /* Bencho font-ui maps directly to MyWork's UI font. */
+  font-family: var(--sans);
+  user-select: none;
+  -webkit-user-select: none;
+}
 
-  .time-tracker-actions > button {
-    width: auto;
-    min-height: 32px;
+/* centred in the block, so it grows out from its middle */
+.dyn-top {
+  height: 150px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dyn-pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A background button expands the shape. Its sibling controls keep
+   native focus and activation without invalid nested buttons. */
+.dyn-toggle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+
+.dyn-toggle:focus-visible { outline-offset: -4px; }
+
+.dyn-in {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.dyn-compact,
+.dyn-open {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* shut: one mark at each end, the middle left dark for the
+   camera, as on the real one */
+.dyn-compact { justify-content: space-between; padding: 0 12px 0 12px; }
+
+.dyn-open { padding: 0 16px; gap: 12px; }
+
+.dyn-open[data-kind="Music"] { padding: 16px 20px; align-items: stretch; }
+
+.dyn-num {
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0em;
+}
+
+.dyn-amber { color: #e09a12; }
+
+/* the bright green phones use on black, as the cyan is: the system's
+   #1f9d55 is tuned for a white ground and goes dull on the island.
+   The white island keeps #1f9d55 (below). A deliberate exception to
+   the system's status green: apply-system.mjs snaps it back, so put
+   it back after any Press run */
+.dyn-green { color: #30d158; }
+
+.dyn-amber-bg { background: rgba(255, 159, 10, 0.24); color: #e09a12; }
+
+.dyn-red-bg { background: #e5484d; color: #fff; }
+
+.dyn-round {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  transition: scale 160ms ease;
+}
+
+.dyn-round:active { scale: 0.96; }
+
+.dyn-grow { flex: 1; }
+
+.dyn-label { font-size: 12px; color: rgba(255, 255, 255, 0.55); font-weight: 400; letter-spacing: 0em; }
+
+.dyn-big {
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.dyn-open[data-kind="Timer"] .dyn-label { margin-right: -4px; align-self: center; }
+
+.dyn-face { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; flex: none; }
+
+.dyn-who { display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
+
+.dyn-name { font-size: 16px; font-weight: 500; color: #fff; letter-spacing: -0.01em; }
+
+/* the call reads at a glance: a size up on both lines */
+.dyn-open[data-kind="Call"] .dyn-label { font-size: 14px; letter-spacing: -0.01em; }
+
+.dyn-open[data-kind="Call"] .dyn-name { font-size: 16px; letter-spacing: -0.01em; }
+
+/* music and flight take the same step up as the call */
+.dyn-open[data-kind="Music"] .dyn-label { font-size: 14px; letter-spacing: -0.01em; }
+
+.dyn-open[data-kind="Music"] .dyn-name { font-size: 16px; letter-spacing: -0.01em; }
+
+.dyn-open[data-kind="Music"] .dyn-t { font-size: 13px; width: 38px; letter-spacing: 0em; }
+
+.dyn-open[data-kind="Flight"] .dyn-label { font-size: 14px; letter-spacing: -0.01em; }
+
+.dyn-open[data-kind="Flight"] .dyn-code { font-size: 30px; letter-spacing: -0.03em; }
+
+.dyn-open[data-kind="Flight"] .dyn-t { font-size: 13px; width: auto; letter-spacing: 0em; }
+
+.dyn-open[data-kind="Flight"] .dyn-eta { font-size: 14px; letter-spacing: -0.01em; }
+
+.dyn-art { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; flex: none; }
+
+.dyn-art-s { width: 22px; height: 22px; border-radius: 6px; }
+
+.dyn-music { display: flex; flex-direction: column; justify-content: space-between; width: 100%; }
+
+.dyn-row { display: flex; align-items: center; gap: 12px; }
+
+.dyn-track { gap: 12px; }
+
+.dyn-t { font-size: 11px; color: rgba(255, 255, 255, 0.5); font-variant-numeric: tabular-nums; width: 34px; letter-spacing: 0em; }
+
+.dyn-t:last-child { text-align: right; }
+
+.dyn-rail { flex: 1; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.22); overflow: hidden; }
+
+/* On the black rail use the theme's ink for a visible progress fill;
+   the fill-slab/card surface mapping lives on the white variant below. */
+.dyn-rail > span { display: block; height: 100%; background: var(--space-fg); border-radius: inherit; transition: width 1s linear; }
+
+.dyn-ctl { justify-content: center; gap: 20px; }
+
+.dyn-play { display: grid; place-items: center; width: 32px; height: 32px; border: 0; padding: 0; background: transparent; color: inherit; pointer-events: auto; }
+
+/* the bars dance while it plays and lie low when paused */
+.dyn-bars { display: inline-flex; align-items: center; gap: 2px; height: 16px; }
+
+.dyn-bars i {
+  width: 3px;
+  height: 4px;
+  border-radius: 2px;
+  background: #ff6fa0;
+  transition: height 220ms ease;
+}
+
+.dyn-bars[data-on] i { animation: dyn-bar 0.9s ease-in-out infinite alternate; }
+
+.dyn-bars[data-on] i:nth-child(2) { animation-duration: 0.7s; animation-delay: -0.3s; }
+
+.dyn-bars[data-on] i:nth-child(3) { animation-duration: 1.1s; animation-delay: -0.5s; }
+
+.dyn-bars[data-on] i:nth-child(4) { animation-duration: 0.8s; animation-delay: -0.2s; }
+
+/* the white island: ink turned over, and the colours tuned for
+   black taken a step deeper so they hold on white */
+/* the flight: cities, codes either side of the track, the times */
+.dyn-open[data-kind="Flight"] { padding: 16px 20px; align-items: stretch; }
+
+.dyn-cyan { color: #64d2ff; }
+
+.dyn-plane { rotate: 45deg; }
+
+.dyn-flight { display: flex; flex-direction: column; justify-content: space-between; width: 100%; }
+
+.dyn-flight .dyn-ends { justify-content: space-between; }
+
+.dyn-flight .dyn-t { width: auto; font-size: 11px; letter-spacing: 0em; }
+
+.dyn-code { font-size: 30px; font-weight: 500; letter-spacing: -0.03em; color: #fff; line-height: 1.1; }
+
+.dyn-fly { position: relative; flex: 1; height: 22px; margin: 0 4px; }
+
+.dyn-fly::before, .dyn-fly > i {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 6px;
+  translate: 0 -50%;
+  border-radius: 3px;
+}
+
+.dyn-fly::before { right: 0; background: rgba(255, 255, 255, 0.18); }
+
+/* Bencho --p is per-flight progress, not a palette token. Keep it
+   scoped to .dyn-flight as --dyn-progress, set by the component. */
+.dyn-fly > i { width: calc(var(--dyn-progress, 0) * (100% - 18px) + 9px); background: #64d2ff; transition: width 1s linear; }
+
+.dyn-fly .dyn-plane { position: absolute; top: 50%; left: calc(var(--dyn-progress, 0) * (100% - 18px)); translate: 0 -50%; color: #fff; transition: left 1s linear; }
+
+.dyn-eta { font-size: 12px; font-weight: 400; letter-spacing: 0em; }
+
+/* Bencho card/fill-slab → space-panel; ink/fill-on → space-fg.
+   White is the source API's name for the app-surface variant: its
+   foreground and surface travel together through every MyWork theme. */
+.dyn-pill[data-tone="white"] {
+  background: var(--space-panel);
+  color: var(--space-fg);
+  /* no shadow; a faint edge so white holds on a light card */
+  box-shadow: 0 0 0 1px var(--space-line);
+}
+
+.dyn-pill[data-tone="white"] .dyn-label,
+.dyn-pill[data-tone="white"] .dyn-t { color: var(--space-muted); }
+
+.dyn-pill[data-tone="white"] .dyn-name { color: var(--space-fg); }
+
+.dyn-pill[data-tone="white"] .dyn-amber { color: #e09a12; }
+
+.dyn-pill[data-tone="white"] .dyn-amber-bg { background: rgba(255, 149, 0, 0.16); color: #e09a12; }
+
+.dyn-pill[data-tone="white"] .dyn-green { color: var(--space-green); }
+
+.dyn-pill[data-tone="white"] .dyn-cyan { color: var(--space-cyan); }
+
+.dyn-pill[data-tone="white"] .dyn-code { color: var(--space-fg); }
+
+.dyn-pill[data-tone="white"] .dyn-fly::before { background: var(--space-line); }
+
+.dyn-pill[data-tone="white"] .dyn-fly > i { background: var(--space-cyan); }
+
+.dyn-pill[data-tone="white"] .dyn-fly .dyn-plane { color: var(--space-fg); }
+
+.dyn-pill[data-tone="white"] .dyn-rail { background: var(--space-line); }
+
+.dyn-pill[data-tone="white"] .dyn-rail > span { background: var(--space-fg); }
+
+/* Initials deliberately stand in for the unlicensed Bencho avatar. */
+.dyn-avatar-placeholder { display: grid; place-items: center; background: var(--space-raised); color: var(--space-fg); }
+
+/* The live activity is anchored at the top of the app. Its top edge
+   stays put as the pill opens downwards, over the page, so neither
+   the toolbar nor the customer navigation shifts with the spring. */
+.dyn[data-tracking] { height: 0; padding: 0; }
+.dyn[data-tracking] .dyn-top { height: auto; align-items: flex-start; }
+.dyn[data-tracking] .dyn-open { padding: 16px; }
+/* The live tracker follows the selected theme rather than the demo's
+   hardware black and amber. Surface, ink and focus accent stay paired. */
+.dyn[data-tracking] .dyn-amber { color: var(--space-cyan); }
+.dyn[data-tracking] .dyn-amber-bg { background: color-mix(in srgb, var(--space-cyan) 18%, transparent); color: var(--space-cyan); }
+.dyn[data-tracking] .dyn-bars i { background: var(--space-pink); }
+.dyn-tracking { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; min-width: 0; width: 100%; }
+.dyn-customer { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.dyn[data-tracking] .dyn-big { font-size: clamp(22px, 2vw, 30px); white-space: nowrap; }
+.dyn[data-tracking] .dyn-label { align-self: auto; margin-right: 0; text-align: left; }
+.dyn-tracking-footer { justify-content: space-between; gap: 6px; }
+.dyn-tracking-footer .dyn-label { min-width: 0; }
+.dyn-summary { min-height: 28px; padding: 2px 0 2px 6px; border: 0; background: transparent; color: inherit; font-size: 12px; pointer-events: auto; }
+.dyn-summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dyn-bars[data-on] i { animation: none; height: 10px; }
+  .dyn :is(.dyn-round, .dyn-bars i, .dyn-rail > span, .dyn-fly > i, .dyn-fly .dyn-plane) { transition: none; }
+  .dyn-round:active { scale: none; }
+}
+
+@keyframes dyn-bar {
+  from { height: 4px; }
+  to { height: 16px; }
+}
+
+.inbox-senders {
+  min-height: 84px;
+  padding: 10px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.import-dialog .inbox-error {
+  color: var(--space-coral, #ff8a7a);
+}
+
+.import-actions .mcp-note {
+  align-self: center;
+  margin-right: auto;
+}
+
+/* Date field: themed replacement for the native date picker (DateField.tsx). */
+.date-field {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms var(--space-ease), background-color 160ms var(--space-ease);
+}
+
+.date-field:hover {
+  border-color: color-mix(in srgb, var(--space-cyan) 45%, var(--space-line));
+}
+
+.date-field.is-open {
+  border-color: var(--space-cyan);
+}
+
+.date-field svg {
+  flex: none;
+  color: var(--space-muted);
+}
+
+.date-field.is-open svg,
+.date-field:hover svg {
+  color: var(--space-cyan);
+}
+
+.date-field.is-empty .date-field-value {
+  color: var(--space-quiet);
+}
+
+.planning-field .date-field {
+  width: 100%;
+}
+
+.date-popover {
+  position: fixed;
+  z-index: 80;
+  width: min(296px, calc(100vw - 16px));
+  padding: 12px 12px 10px;
+  border: 1px solid var(--space-line);
+  border-radius: var(--space-radius);
+  background: #101831;
+  color: var(--space-fg);
+  box-shadow: 0 6px 14px -8px rgb(0 0 0 / 60%), 0 22px 44px -18px rgb(0 0 0 / 75%);
+  transform-origin: top left;
+  animation: date-pop 170ms var(--space-ease);
+}
+
+.date-popover.is-above {
+  transform-origin: bottom left;
+  animation-name: date-pop-up;
+}
+
+@keyframes date-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+}
+
+@keyframes date-pop-up {
+  from { opacity: 0; transform: translateY(4px) scale(0.985); }
+}
+
+.date-popover button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.date-popover :focus-visible {
+  outline: 2px solid var(--space-cyan);
+  outline-offset: 1px;
+}
+
+.date-popover-head {
+  display: grid;
+  grid-template-columns: 30px 1fr 30px;
+  align-items: center;
+  gap: 4px;
+}
+
+.date-popover-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-popover-title::first-letter {
+  text-transform: uppercase;
+}
+
+.date-popover-nav {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  color: var(--space-muted) !important;
+}
+
+.date-popover-nav:hover {
+  background: var(--space-raised) !important;
+  color: var(--space-fg) !important;
+}
+
+.date-popover-quick {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 8px;
+}
+
+.date-popover-quick button {
+  flex: 1 1 auto;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--space-line);
+  border-radius: 4px;
+  color: var(--space-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.date-popover-quick button:hover {
+  border-color: color-mix(in srgb, var(--space-cyan) 50%, var(--space-line));
+  color: var(--space-fg);
+}
+
+.date-popover-quick button.is-active {
+  border-color: var(--space-cyan);
+  color: var(--space-cyan);
+}
+
+.date-grid {
+  display: grid;
+  gap: 2px;
+}
+
+.date-grid-row {
+  display: grid;
+  grid-template-columns: 22px repeat(7, 1fr);
+  align-items: center;
+  gap: 2px;
+}
+
+.date-grid-row > span[role='gridcell'] {
+  display: grid;
+}
+
+.date-grid-row.is-head {
+  margin-bottom: 2px;
+}
+
+.date-grid-weekday,
+.date-grid-week {
+  color: var(--space-quiet);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.date-grid-weekday {
+  padding-block: 4px;
+  text-transform: capitalize;
+}
+
+.date-grid-week {
+  opacity: 0.8;
+}
+
+.date-cell {
+  position: relative;
+  height: 34px;
+  border-radius: 4px;
+  color: var(--space-fg);
+  font-size: 0.84rem;
+  font-weight: 500;
+  transition: background-color 120ms var(--space-ease), color 120ms var(--space-ease);
+}
+
+.date-cell.is-weekend {
+  color: var(--space-muted);
+}
+
+.date-cell.is-past {
+  color: var(--space-quiet);
+}
+
+.date-cell.is-outside {
+  color: var(--space-quiet);
+  opacity: 0.55;
+}
+
+.date-cell:hover {
+  background: var(--space-raised);
+  color: var(--space-fg);
+  opacity: 1;
+}
+
+.date-cell.is-today {
+  color: var(--space-cyan);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--space-cyan) 55%, transparent);
+}
+
+.date-cell.is-selected,
+.date-cell.is-selected:hover {
+  background: var(--space-cyan);
+  color: var(--space-void);
+  font-weight: 700;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.date-popover-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--space-line);
+}
+
+.date-popover-hint {
+  color: var(--space-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-popover-clear {
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--space-muted) !important;
+  font-size: 0.78rem !important;
+  font-weight: 600;
+}
+
+.date-popover-clear:hover {
+  background: var(--space-raised) !important;
+  color: var(--space-pink) !important;
+}
+
+.app[data-art-style='pixel'] .date-popover :is(.date-cell, .date-popover-quick button, .date-popover-nav) {
+  border-radius: 0;
+}
+
+.app[data-art-style='pixel'] .date-popover-title {
+  font-family: var(--pixel-font);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .date-popover {
+    animation: none;
   }
+}
+
+.date-control > span {
+  white-space: nowrap;
 }

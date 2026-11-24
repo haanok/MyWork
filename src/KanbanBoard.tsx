@@ -2,15 +2,17 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, t
 import { today } from './dates';
 import { IconFlag, IconPlus } from './icons';
 import { STATUS_LABEL, TASK_DRAG_TYPE, TaskEntry } from './TaskEntry';
-import type { Priority, Task, TaskStatus } from './types';
+import type { Customer, Priority, Task, TaskStatus } from './types';
+import { DateField } from './DateField';
 
-const COLUMNS: TaskStatus[] = ['open', 'doing', 'done'];
+const COLUMNS: TaskStatus[] = ['open', 'doing', 'waiting', 'done'];
 
 interface Props {
   tasks: Task[];
   onAddTask: (title: string, description: string, priority: Priority, due: string | undefined, status: TaskStatus) => void;
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onRemoveTask: (id: string) => void;
+  moveTargets?: Customer[];
 }
 
 function sortColumn(status: TaskStatus, list: Task[]) {
@@ -24,13 +26,13 @@ function sortColumn(status: TaskStatus, list: Task[]) {
   });
 }
 
-/** Tasks for one customer as three status columns. Cards are dragged between columns to change status. */
-export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask }: Props) {
+/** Tasks for one customer grouped by status. Cards can be dragged between columns. */
+export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask, moveTargets }: Props) {
   const [dropTarget, setDropTarget] = useState<TaskStatus | null>(null);
   const [composerFor, setComposerFor] = useState<TaskStatus | null>(null);
 
   const columns = useMemo(() => {
-    const grouped: Record<TaskStatus, Task[]> = { open: [], doing: [], done: [] };
+    const grouped: Record<TaskStatus, Task[]> = { open: [], doing: [], waiting: [], done: [] };
     for (const task of tasks) grouped[task.status]?.push(task);
     for (const status of COLUMNS) grouped[status] = sortColumn(status, grouped[status]);
     return grouped;
@@ -98,7 +100,7 @@ export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask }: Pr
               {list.length === 0 && composerFor !== status ? (
                 <p className="kanban-empty">{status === 'done' ? 'Drop finished tasks here.' : 'No tasks here.'}</p>
               ) : list.map((task) => (
-                <TaskEntry key={task.id} task={task} variant="card" onUpdate={onUpdateTask} onRemove={onRemoveTask} />
+                <TaskEntry key={task.id} task={task} variant="card" onUpdate={onUpdateTask} onRemove={onRemoveTask} moveTargets={moveTargets} />
               ))}
             </div>
 
@@ -172,7 +174,7 @@ function ColumnComposer({
       <div className="kanban-composer-row">
         <label className="date-control">
           <span>Due date</span>
-          <input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} />
+          <DateField label="Due date" value={due} onChange={setDue} />
         </label>
         <div className="priority-control" role="group" aria-label="Task priority">
           <button type="button" className={priority === 'normal' ? 'is-active' : ''} aria-pressed={priority === 'normal'} onClick={() => setPriority('normal')}>Normal</button>

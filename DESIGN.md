@@ -102,6 +102,7 @@ Controls and panels use 4-6px corners. Customer orbs and contact initials are ci
 - **Task composer**: title, multiline description, due date, priority, and add action.
 - **Task row**: due date and relative urgency, title, always-visible description, priority control, status select, and delete action.
 - **Customer navigation**: persistent on desktop; active record is marked with a cyan inset and current-state semantics.
+- **Date field**: a themed button that opens a Monday-first month popover (`DateField.tsx`) with ISO week numbers, Today / Tomorrow / Next Monday shortcuts, a cyan-ringed today, a filled cyan selection, and Clear. Fully keyboard-driven; replaces the native date picker everywhere.
 - **Context rail**: editable working notes, contacts, local-save state, and customer removal.
 
 ## Do's and Don'ts

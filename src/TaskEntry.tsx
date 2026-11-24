@@ -2,10 +2,12 @@ import { useState, type DragEvent, type KeyboardEvent } from 'react';
 import { formatDueLong, relativeDue, today } from './dates';
 import { IconFlag, IconTrash } from './icons';
 import type { Customer, Task, TaskStatus } from './types';
+import { DateField } from './DateField';
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {
   open: 'Open',
   doing: 'In progress',
+  waiting: 'Waiting on',
   done: 'Completed',
 };
 
@@ -18,6 +20,7 @@ export function TaskEntry({
   onRemove,
   customer,
   onOpenCustomer,
+  moveTargets,
   variant = 'row',
 }: {
   task: Task;
@@ -26,6 +29,8 @@ export function TaskEntry({
   /** Shown as a link to the customer in cross-customer views. */
   customer?: Customer;
   onOpenCustomer?: (id: string) => void;
+  /** Customers the task can be moved to from the editor. */
+  moveTargets?: Customer[];
   /** `card` renders a compact, draggable card for the kanban board. */
   variant?: 'row' | 'card';
 }) {
@@ -34,14 +39,25 @@ export function TaskEntry({
   const [description, setDescription] = useState(task.description ?? '');
   const [solution, setSolution] = useState(task.solution ?? '');
   const [due, setDue] = useState(task.due ?? '');
+  const [waitingFor, setWaitingFor] = useState(task.waitingFor ?? '');
+  const [followUp, setFollowUp] = useState(task.followUp ?? '');
+  const [plannedFor, setPlannedFor] = useState(task.plannedFor ?? '');
+  const [customerId, setCustomerId] = useState(task.customerId);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const overdue = !!task.due && task.due < today() && task.status !== 'done';
+  const followUpDue = task.status === 'waiting' && !!task.followUp && task.followUp <= today();
+  const inPlan = !!task.plannedFor && task.plannedFor <= today();
   const hasLongDescription = (task.description?.length ?? 0) > 180 || (task.description?.split('\n').length ?? 0) > 3;
 
   const save = () => {
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
-    onUpdate(task.id, { title: cleanTitle, description: description.trim(), solution: solution.trim() || undefined, due: due || undefined });
+    onUpdate(task.id, {
+      title: cleanTitle, description: description.trim(), solution: solution.trim() || undefined,
+      due: due || undefined, waitingFor: waitingFor.trim() || undefined,
+      followUp: followUp || undefined, plannedFor: plannedFor || undefined,
+      ...(customerId !== task.customerId ? { customerId } : {}),
+    });
     setEditing(false);
   };
 
@@ -50,16 +66,21 @@ export function TaskEntry({
     setDescription(task.description ?? '');
     setSolution(task.solution ?? '');
     setDue(task.due ?? '');
+    setWaitingFor(task.waitingFor ?? '');
+    setFollowUp(task.followUp ?? '');
+    setPlannedFor(task.plannedFor ?? '');
+    setCustomerId(task.customerId);
     setEditing(true);
   };
 
-  const dirty = title !== task.title || description !== (task.description ?? '') || solution !== (task.solution ?? '') || due !== (task.due ?? '');
+  const dirty = title !== task.title || description !== (task.description ?? '') || solution !== (task.solution ?? '') || due !== (task.due ?? '')
+    || waitingFor !== (task.waitingFor ?? '') || followUp !== (task.followUp ?? '') || plannedFor !== (task.plannedFor ?? '') || customerId !== task.customerId;
   const cancelEdit = () => {
     if (dirty && !window.confirm('Discard unsaved changes to this task?')) return;
     setEditing(false);
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement | HTMLSelectElement | HTMLButtonElement>) => {
     if (event.key === 'Escape') {
       event.stopPropagation();
       cancelEdit();
@@ -77,7 +98,7 @@ export function TaskEntry({
 
   return (
     <article
-      className={`task-entry${isCard ? ' is-card' : ''}${dragging ? ' is-dragging' : ''}${overdue ? ' is-overdue' : ''}${task.status === 'done' ? ' is-complete' : ''}`}
+      className={`task-entry${isCard ? ' is-card' : ''}${dragging ? ' is-dragging' : ''}${overdue ? ' is-overdue' : ''}${task.status === 'done' ? ' is-complete' : ''}${editing ? ' is-editing' : ''}`}
       draggable={isCard && !editing}
       onDragStart={isCard && !editing ? onDragStart : undefined}
       onDragEnd={isCard ? () => setDragging(false) : undefined}
@@ -89,17 +110,42 @@ export function TaskEntry({
             <span>{overdue ? relativeDue(task.due) : task.status === 'done' ? 'Completed' : relativeDue(task.due)}</span>
           </>
         ) : (
-          <><strong>No due date</strong><span>Unscheduled</span></>
+          <><strong>No due date</strong><span>No deadline</span></>
+        )}
+        {task.plannedFor && task.status !== 'done' && (
+          <span className="task-plan-note">{task.plannedFor === today() ? 'Planned today' : `Planned ${formatDueLong(task.plannedFor)}`}</span>
         )}
       </div>
       <div className="task-content">
         {editing ? (
           <div className="task-editor">
-            <input className="crm-field" aria-label="Task title" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={onKeyDown} autoFocus />
-            <textarea className="crm-field" aria-label="Task description" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} onKeyDown={onKeyDown} placeholder="Add details and next steps" />
-            <textarea className="crm-field" aria-label="Task solution" rows={3} value={solution} onChange={(event) => setSolution(event.target.value)} onKeyDown={onKeyDown} placeholder="Solution: what you did, for later reference" />
-            <div className="editor-actions">
-              <label className="date-control"><span>Due date</span><input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
+            <div className="task-editor-text">
+              <input className="crm-field task-editor-title" aria-label="Task title" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={onKeyDown} autoFocus />
+              <textarea className="crm-field" aria-label="Task description" rows={4} value={description} onChange={(event) => setDescription(event.target.value)} onKeyDown={onKeyDown} placeholder="Add details and next steps" />
+            </div>
+            <label className="planning-field">
+              <span>Solution</span>
+              <textarea className="crm-field task-editor-solution" rows={2} value={solution} onChange={(event) => setSolution(event.target.value)} onKeyDown={onKeyDown} placeholder="What you did, for later reference" />
+            </label>
+            {task.status === 'waiting' && (
+              <div className="task-editor-grid">
+                <label className="planning-field"><span>Waiting for</span><input className="crm-field" value={waitingFor} onChange={(event) => setWaitingFor(event.target.value)} onKeyDown={onKeyDown} placeholder="Person, access, or response" /></label>
+                <label className="planning-field"><span>Follow up</span><DateField label="Follow up" value={followUp} onChange={setFollowUp} onKeyDown={onKeyDown} /></label>
+              </div>
+            )}
+            <div className="task-editor-grid">
+              <label className="planning-field"><span>Due date</span><DateField label="Due date" value={due} onChange={setDue} onKeyDown={onKeyDown} /></label>
+              <label className="planning-field"><span>Planned for</span><DateField label="Planned for" value={plannedFor} onChange={setPlannedFor} onKeyDown={onKeyDown} /><small>Workday only. The deadline stays.</small></label>
+              {moveTargets && moveTargets.length > 0 && (
+                <label className="planning-field"><span>Customer</span>
+                  <select className="crm-field" value={customerId} onChange={(event) => setCustomerId(event.target.value)} onKeyDown={onKeyDown}>
+                    {!moveTargets.some((entry) => entry.id === task.customerId) && <option value={task.customerId}>{customer?.name || 'Current customer'}</option>}
+                    {moveTargets.map((entry) => <option value={entry.id} key={entry.id}>{entry.name || 'Untitled customer'}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+            <div className="editor-actions task-editor-actions">
               <button type="button" className="crm-secondary" onClick={cancelEdit}>Cancel</button>
               <button type="button" className="crm-primary small-primary" onClick={save}>Save</button>
             </div>
@@ -116,12 +162,20 @@ export function TaskEntry({
               {task.priority === 'high' && <span className="priority-mark"><IconFlag width={13} height={13} /> High</span>}
             </div>
             <p className={`task-description${task.description ? '' : ' is-blank'}${hasLongDescription && !descriptionExpanded ? ' is-collapsed' : ''}`}>
-              {task.description || 'No description yet. Add the details needed to move this forward.'}
+              {task.description || 'No description yet'}
             </p>
             {task.solution && (
               <div className="task-solution">
                 <span className="task-solution-label">Solution</span>
                 <p>{task.solution}</p>
+              </div>
+            )}
+            {task.status === 'waiting' && (
+              <div className="task-waiting-info">
+                <p><strong>Waiting for</strong> {task.waitingFor || 'Add who or what you need.'}</p>
+                <p className={followUpDue ? 'follow-up-due' : ''}>
+                  {task.followUp ? `Follow up ${formatDueLong(task.followUp)}${followUpDue ? ' · ready to follow up' : ''}` : 'No follow-up date set.'}
+                </p>
               </div>
             )}
             <div className="task-links">
@@ -136,6 +190,17 @@ export function TaskEntry({
                 </button>
               )}
               <button type="button" className="task-edit-link" onClick={startEditing}>Edit task</button>
+              {task.status !== 'done' && (
+                <button
+                  type="button"
+                  className="task-edit-link task-plan-toggle"
+                  aria-label={`${inPlan ? 'Remove from plan:' : 'Plan for today:'} ${task.title}`}
+                  aria-pressed={inPlan}
+                  onClick={() => onUpdate(task.id, { plannedFor: inPlan ? undefined : today() })}
+                >
+                  {inPlan ? 'Remove from plan' : 'Plan for today'}
+                </button>
+              )}
             </div>
           </>
         )}
@@ -143,8 +208,12 @@ export function TaskEntry({
       <div className="task-controls">
         <label className="status-select-label">
           <span className="visually-hidden">Status for {task.title}</span>
-          <select className={`task-status-select st-${task.status}`} value={task.status} onChange={(event) => onUpdate(task.id, { status: event.target.value as TaskStatus })}>
-            {(['open', 'doing', 'done'] as TaskStatus[]).map((status) => <option value={status} key={status}>{STATUS_LABEL[status]}</option>)}
+          <select className={`task-status-select st-${task.status}`} value={task.status} onChange={(event) => {
+            const status = event.target.value as TaskStatus;
+            onUpdate(task.id, { status });
+            if (status === 'waiting' && !editing) startEditing();
+          }}>
+            {(['open', 'doing', 'waiting', 'done'] as TaskStatus[]).map((status) => <option value={status} key={status}>{STATUS_LABEL[status]}</option>)}
           </select>
         </label>
           <button

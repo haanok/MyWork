@@ -19,6 +19,19 @@ services:
       # Remote MCP for Claude (README, "Use MyWork from Claude"). Off when empty.
       MCP_CLIENT_ID: ${MCP_CLIENT_ID:-}
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
+      # Local dates (due dates parsed from email subjects).
+      TZ: ${TZ:-Europe/Oslo}
+      # Email to task (docs/self-hosting.md, "Email to task"). Off when empty.
+      INBOUND_IMAP_HOST: ${INBOUND_IMAP_HOST:-imap.purelymail.com}
+      INBOUND_IMAP_PORT: ${INBOUND_IMAP_PORT:-993}
+      INBOUND_IMAP_USER: ${INBOUND_IMAP_USER:-}
+      INBOUND_IMAP_PASSWORD: ${INBOUND_IMAP_PASSWORD:-}
+      INBOUND_ADDRESS: ${INBOUND_ADDRESS:-}
+      INBOUND_POLL_SECONDS: ${INBOUND_POLL_SECONDS:-60}
+      INBOUND_NIGHT_HOURS: ${INBOUND_NIGHT_HOURS-22-07}
+      INBOUND_NIGHT_POLL_SECONDS: ${INBOUND_NIGHT_POLL_SECONDS:-3600}
+      INBOUND_RETENTION_DAYS: ${INBOUND_RETENTION_DAYS:-30}
+      INBOUND_REQUIRE_DKIM: ${INBOUND_REQUIRE_DKIM:-true}
     volumes:
       # Named volume by default; set DATA_PATH to a host directory to bind-mount it.
       - ${DATA_PATH:-mywork-data}:/data

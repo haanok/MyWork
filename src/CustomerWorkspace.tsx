@@ -3,9 +3,9 @@ import { today, toISODate, uid } from './dates';
 import { IconFlag, IconPlus, IconTrash } from './icons';
 import { KanbanBoard } from './KanbanBoard';
 import { dailyTotals, formatDuration, useNow, type useTimeTracker } from './timeTracking';
-import { TimeTrackerPanel } from './TimeTracker';
 import { TaskEntry } from './TaskEntry';
 import type { Customer, CustomerStatus, Priority, Task, TaskStatus } from './types';
+import { DateField } from './DateField';
 
 type TaskFilter = 'open' | 'done' | 'all';
 export type WorkspaceLayout = 'list' | 'board';
@@ -19,13 +19,14 @@ interface Props {
   layout: WorkspaceLayout;
   onLayoutChange: (layout: WorkspaceLayout) => void;
   tracker?: ReturnType<typeof useTimeTracker>;
-  onShowSummary: () => void;
   onSelectCustomer: (id: string) => void;
   onAddCustomer: () => void;
   onUpdateCustomer: (patch: Partial<Customer>) => void;
   onAddTask: (title: string, description: string, priority: Priority, due?: string, status?: TaskStatus) => void;
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onRemoveTask: (id: string) => void;
+  /** Customers a task can be moved to. */
+  moveTargets?: Customer[];
   onArchiveCustomer: () => void;
   onDeleteCustomer: () => void;
 }
@@ -39,8 +40,8 @@ const CUSTOMER_STATUS_LABEL: Record<CustomerStatus, string> = {
 };
 
 function CustomerRail({
-  customer, customers, tasks, tracker, onAddCustomer, onSelectCustomer, onShowSummary,
-}: Pick<Props, 'customer' | 'customers' | 'tasks' | 'tracker' | 'onAddCustomer' | 'onSelectCustomer' | 'onShowSummary'>) {
+  customer, customers, tasks, tracker, onAddCustomer, onSelectCustomer,
+}: Pick<Props, 'customer' | 'customers' | 'tasks' | 'tracker' | 'onAddCustomer' | 'onSelectCustomer'>) {
   const now = useNow(tracker?.state.running ?? false);
   const totals = tracker ? dailyTotals(tracker.state, now, toISODate(new Date(now))) : new Map<string, number>();
   return (
@@ -84,16 +85,6 @@ function CustomerRail({
           );
         })}
       </nav>
-      {tracker && (
-        <TimeTrackerPanel
-          state={tracker.state}
-          customer={customer}
-          totals={totals}
-          onPause={tracker.pause}
-          onResume={tracker.resume}
-          onShowSummary={onShowSummary}
-        />
-      )}
     </aside>
   );
 }
@@ -107,13 +98,13 @@ export function CustomerWorkspace({
   layout,
   onLayoutChange,
   tracker,
-  onShowSummary,
   onSelectCustomer,
   onAddCustomer,
   onUpdateCustomer,
   onAddTask,
   onUpdateTask,
   onRemoveTask,
+  moveTargets,
   onArchiveCustomer,
   onDeleteCustomer,
 }: Props) {
@@ -143,6 +134,7 @@ export function CustomerWorkspace({
   const openCount = customerTasks.filter((task) => task.status !== 'done').length;
   const overdueCount = customerTasks.filter((task) => task.status !== 'done' && task.due && task.due < today()).length;
   const doneCount = customerTasks.filter((task) => task.status === 'done').length;
+  const waitingCount = customerTasks.filter((task) => task.status === 'waiting').length;
 
   const orderedTasks = useMemo(() => {
     const filtered = customerTasks.filter((task) => {
@@ -178,7 +170,6 @@ export function CustomerWorkspace({
         tracker={tracker}
         onAddCustomer={onAddCustomer}
         onSelectCustomer={onSelectCustomer}
-        onShowSummary={onShowSummary}
       />
 
       <section className="crm-main" aria-label={`${customer.name} task queue`}>
@@ -251,8 +242,21 @@ export function CustomerWorkspace({
           </div>
         </header>
 
+        <section className="customer-next-step" aria-labelledby="next-step-label">
+          <label id="next-step-label" htmlFor="customer-next-step">Continue here</label>
+          <textarea
+            id="customer-next-step"
+            className="crm-field"
+            rows={2}
+            value={customer.nextStep ?? ''}
+            placeholder="Where you left off and what to do next"
+            onChange={(event) => onUpdateCustomer({ nextStep: event.target.value })}
+          />
+        </section>
+
         <div className="queue-summary" aria-label="Task summary">
           <span><b>{openCount}</b> open</span>
+          {waitingCount > 0 && <span><b>{waitingCount}</b> waiting</span>}
           <span className={overdueCount > 0 ? 'summary-alert' : ''}><b>{overdueCount}</b> overdue</span>
           <span><b>{doneCount}</b> completed</span>
         </div>
@@ -263,6 +267,7 @@ export function CustomerWorkspace({
             onAddTask={onAddTask}
             onUpdateTask={onUpdateTask}
             onRemoveTask={onRemoveTask}
+            moveTargets={moveTargets}
           />
         ) : (<>
         <button
@@ -301,7 +306,7 @@ export function CustomerWorkspace({
           <div className="composer-actions">
             <label className="date-control">
               <span>Due date</span>
-              <input className="crm-field" type="date" value={due} onChange={(event) => setDue(event.target.value)} />
+              <DateField label="Due date" value={due} onChange={setDue} />
             </label>
             <div className="priority-control" role="group" aria-label="Task priority">
               <button type="button" className={priority === 'normal' ? 'is-active' : ''} aria-pressed={priority === 'normal'} onClick={() => setPriority('normal')}>Normal</button>
@@ -341,7 +346,7 @@ export function CustomerWorkspace({
               <span>Log a task to record the next action.</span>
             </div>
           ) : orderedTasks.map((task) => (
-            <TaskEntry key={task.id} task={task} onUpdate={onUpdateTask} onRemove={onRemoveTask} />
+            <TaskEntry key={task.id} task={task} onUpdate={onUpdateTask} onRemove={onRemoveTask} moveTargets={moveTargets} />
           ))}
         </div>
         </>)}

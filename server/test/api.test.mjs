@@ -406,7 +406,7 @@ test('MCP initialize and tools/list', async () => {
 test('MCP tools change the same data the web app reads', async () => {
   const acme = await call('add_customer', { name: 'Acme Synthetic AS' });
   assert.equal(acme.value.status, 'active');
-  await call('add_customer', { name: 'Acme Other' });
+  const other = await call('add_customer', { name: 'Acme Other' });
 
   const ambiguous = await call('add_task', { customer: 'acme', title: 'x' });
   assert.equal(ambiguous.isError, true);
@@ -419,6 +419,14 @@ test('MCP tools change the same data the web app reads', async () => {
 
   const open = await call('list_tasks', { customer: 'Acme Synthetic' });
   assert.deepEqual(open.value.map((t) => t.title), ['Send offer']);
+
+  const moved = await call('update_task', { task_id: task.value.id, customer: 'Acme Other' });
+  assert.equal(moved.value.customer, 'Acme Other');
+  assert.equal(moved.value.customerId, other.value.id);
+  assert.deepEqual((await call('list_tasks', { customer: 'Acme Synthetic' })).value, []);
+  const missingTarget = await call('update_task', { task_id: task.value.id, customer: 'Nobody Synthetic' });
+  assert.equal(missingTarget.isError, true);
+  await call('update_task', { task_id: task.value.id, customer: acme.value.id });
 
   const done = await call('update_task', { task_id: task.value.id, status: 'done', due: '' });
   assert.equal(done.value.status, 'done');
@@ -505,5 +513,101 @@ test('MCP is off without MCP_CLIENT_ID', async () => {
   } finally {
     appPort = saved;
     plain.child.kill();
+  }
+});
+
+test('MCP and web round-trip customer handovers, waiting details and independent plans', async () => {
+  const customer = (await call('add_customer', { name: 'Planning Synthetic AS', nextStep: 'Resume VPN checks' })).value;
+  assert.equal(customer.nextStep, 'Resume VPN checks');
+  const task = (await call('add_task', {
+    customer: customer.id, title: 'Test access', status: 'waiting', waitingFor: 'Synthetic contact',
+    followUp: '2026-11-17', plannedFor: '2026-11-17', due: '2026-12-01',
+  })).value;
+  assert.equal(task.status, 'waiting');
+  assert.equal(task.waitingFor, 'Synthetic contact');
+  assert.equal(task.followUp, '2026-11-17');
+  assert.equal(task.plannedFor, '2026-11-17');
+  assert.equal(task.due, '2026-12-01');
+  assert.equal(task.doneAt, undefined);
+  assert.deepEqual((await call('list_tasks', { customer: customer.id, status: 'waiting', follow_up_before: '2026-11-17' })).value.map((t) => t.id), [task.id]);
+  assert.deepEqual((await call('list_tasks', { customer: customer.id, planned_before: '2026-11-18' })).value.map((t) => t.id), [task.id]);
+  assert.deepEqual((await call('list_tasks', { customer: customer.id, follow_up_before: '2026-11-16' })).value, []);
+  assert.ok((await call('search', { query: 'resume vpn' })).value.customers.some((c) => c.id === customer.id));
+  assert.ok((await call('search', { query: 'synthetic contact' })).value.tasks.some((t) => t.id === task.id));
+
+  const token = await sign({}, { sub: MCP_SUB });
+  const loaded = await request('GET', '/api/data', { token });
+  const data = JSON.parse(loaded.body);
+  const webTask = data.tasks.find((t) => t.id === task.id);
+  assert.equal(webTask.followUp, task.followUp);
+  assert.equal(data.customers.find((c) => c.id === customer.id).nextStep, customer.nextStep);
+  webTask.plannedFor = '2026-11-18';
+  const saved = await request('PUT', '/api/data', { token, body: JSON.stringify(data), headers: { 'If-Match': loaded.headers.etag } });
+  assert.equal(saved.status, 204);
+  const detail = (await call('get_customer', { customer: customer.id })).value;
+  assert.equal(detail.tasks[0].plannedFor, '2026-11-18');
+  assert.equal(detail.tasks[0].due, '2026-12-01');
+
+  const cleared = (await call('update_task', { task_id: task.id, status: 'doing', plannedFor: '', waitingFor: '', followUp: '' })).value;
+  assert.equal(cleared.plannedFor, undefined);
+  assert.equal(cleared.waitingFor, undefined);
+  assert.equal(cleared.followUp, undefined);
+  assert.equal(cleared.due, '2026-12-01');
+  assert.deepEqual((await call('list_tasks', { customer: customer.id, follow_up_before: '2026-12-01' })).value, []);
+  await call('update_customer', { customer: customer.id, nextStep: 'Check home access' });
+  assert.equal((await call('get_customer', { customer: customer.id })).value.nextStep, 'Check home access');
+  await call('update_customer', { customer: customer.id, nextStep: '' });
+  assert.equal((await call('get_customer', { customer: customer.id })).value.nextStep, undefined);
+});
+
+test('/api/inbound is off without IMAP settings', async () => {
+  assert.equal((await request('GET', '/api/inbound')).status, 401);
+  const res = await request('GET', '/api/inbound', { token: await sign() });
+  assert.equal(res.status, 200);
+  assert.deepEqual(JSON.parse(res.body), { enabled: false });
+  const put = await request('PUT', '/api/inbound', { token: await sign(), body: JSON.stringify({ senders: ['a@b.example'] }) });
+  assert.equal(put.status, 409);
+});
+
+test('/api/inbound registers sender addresses per user', async () => {
+  const port = await freePort();
+  const mail = await startApp({
+    PORT: String(port),
+    DATA_DIR: dataDir,
+    DIST_DIR: distDir,
+    POCKET_ID_URL: ISSUER,
+    OIDC_CLIENT_ID: CLIENT_ID,
+    OIDC_DISCOVERY_URL: `http://127.0.0.1:${idpPort}/.well-known/openid-configuration`,
+    INBOUND_IMAP_USER: 'mywork@inbox.example',
+    INBOUND_IMAP_PASSWORD: 'synthetic-test-password',
+    INBOUND_POLL_SECONDS: '0',
+  });
+  const saved = appPort;
+  appPort = port;
+  const put = async (senders, sub = SUB) => request('PUT', '/api/inbound', {
+    token: await sign({}, { sub }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ senders }),
+  });
+  try {
+    const empty = JSON.parse((await request('GET', '/api/inbound', { token: await sign() })).body);
+    assert.deepEqual(empty, { enabled: true, address: 'mywork@inbox.example', senders: [], requireDkim: true });
+
+    const saved1 = await put(['Alex@Consulting.example', 'alex@consulting.example']);
+    assert.equal(saved1.status, 200);
+    assert.deepEqual(JSON.parse(saved1.body).senders, ['alex@consulting.example']);
+
+    assert.equal((await put(['not an email'])).status, 400);
+    assert.equal((await put(['mywork@inbox.example'])).status, 400);
+    const taken = await put(['alex@consulting.example'], MCP_SUB);
+    assert.equal(taken.status, 409);
+    assert.match(taken.body, /another user/);
+
+    const stored = JSON.parse(await fs.readFile(path.join(dataDir, 'inbound.json'), 'utf8'));
+    assert.equal(stored.senders['alex@consulting.example'], SUB);
+    assert.deepEqual(JSON.parse((await put([])).body).senders, []);
+  } finally {
+    appPort = saved;
+    mail.child.kill();
   }
 });

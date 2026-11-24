@@ -33,6 +33,9 @@ Frequent context switching during a workday. Quick capture while on calls or bet
 - Production web persistence uses the same-origin `/api/data` on the self-hosted server, with per-user JSON files; localStorage is only the Vite development adapter.
 - The server verifies the Pocket ID token on every request; saves are conditional on the ETag, and conflicting edits (another tab, or Claude via MCP) are merged per customer and task.
 - JSON export/import and customer search are implemented. A quick-add box (⌘K / Ctrl+K) captures a task for any customer from anywhere in the app. Time tracking and due-date reminders remain undecided.
+- Each customer has an autosaved Continue here handover note above the task ledger in both layouts.
+- Tasks can be Waiting on a person or dependency, with a separate follow-up date. Waiting tasks remain visible in their own board column.
+- Today groups deadlines, planned work, waiting/follow-ups, and tasks completed today. A planned workday is independent of the due date; unfinished plans and due follow-ups carry forward. The same fields are available through MCP and JSON import/export.
 
 ## Evidence on Hand
 

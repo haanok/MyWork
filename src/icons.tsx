@@ -122,3 +122,10 @@ export const IconBolt = (p: SVGProps<SVGSVGElement>) => (
     <path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z" />
   </svg>
 );
+
+export const IconMail = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+    <path d="M4 7l8 6 8-6" />
+  </svg>
+);

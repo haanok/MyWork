@@ -3,13 +3,17 @@ import { CustomerWorkspace, type WorkspaceLayout } from './CustomerWorkspace';
 import { AuroraSurface } from './AuroraSurface';
 import { DriftSurface } from './DriftSurface';
 import { today } from './dates';
-import { fetchMcpInfo, type McpInfo } from './api';
-import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
+import { fetchInboundInfo, fetchMcpInfo, type InboundInfo, type McpInfo } from './api';
+import { EmailInboxDialog } from './EmailInbox';
+import { IconArrowLeft, IconCalendar, IconCheck, IconDownload, IconBolt, IconMail, IconMore, IconPlug, IconSearch, IconUpload, IconUserPlus } from './icons';
 import { McpConnectDialog } from './McpConnect';
-import { TimeSummaryDialog } from './TimeTracker';
+import { TimeSummaryDialog, TimeTrackerPanel } from './TimeTracker';
+import { ToastStack, useToastStack } from './ToastStack';
 import { savedTimeTrackingEnabled, TIME_TRACKING_ENABLED_KEY, useTimeTracker } from './timeTracking';
 import { OrbMap } from './OrbMap';
 import { TodayView } from './TodayView';
+import { todayTasks } from './taskPlanning';
+import { useToday } from './useToday';
 import { isMac, QUICK_ADD_KEYS, QuickAddDialog } from './QuickAdd';
 import { rankCustomers } from './quickAddParse';
 import { sampleData } from './sample';
@@ -29,7 +33,7 @@ function useCompact() {
   return compact;
 }
 
-const NEXT_STATUS = { open: 'doing', doing: 'done', done: 'open' } as const;
+const NEXT_STATUS = { open: 'doing', doing: 'done', waiting: 'doing', done: 'open' } as const;
 const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'vice', 'vivicta-pixel', 'porcelain', 'porcelain-dark'] as const;
 const MAP_CENTER_DRIFT_KEY = 'mywork-map-center-drift';
 const WORKSPACE_LAYOUT_KEY = 'mywork-workspace-layout';
@@ -79,6 +83,7 @@ export default function App() {
   const sourceLabel = import.meta.env.DEV ? 'Local preview' : 'Server';
   const { data, ready, undo, loadFailed, storageError, actions, hasUnsavedChanges } = useBoard(adapter);
   const compact = useCompact();
+  const day = useToday();
   const [homeTheme, setHomeTheme] = useState<HomeTheme>(savedHomeTheme);
   const [centerBubbles, setCenterBubbles] = useState(savedCenterDrift);
   const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>(savedWorkspaceLayout);
@@ -91,10 +96,12 @@ export default function App() {
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const { toasts, notify, dismiss: dismissToast } = useToastStack();
   const fileRef = useRef<HTMLInputElement>(null);
   const [mcpInfo, setMcpInfo] = useState<McpInfo | null>(null);
   const [showMcp, setShowMcp] = useState(false);
+  const [inboundInfo, setInboundInfo] = useState<InboundInfo | null>(null);
+  const [showInbound, setShowInbound] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddInitialText, setQuickAddInitialText] = useState('');
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
@@ -136,10 +143,12 @@ export default function App() {
   useEffect(() => {
     if (import.meta.env.DEV) {
       setMcpInfo({ enabled: true, url: 'https://mywork.example.com/mcp', clientId: 'example-client-id', issuer: 'https://id.example.com' });
+      setInboundInfo({ enabled: true, address: 'mywork@example.com', senders: [], requireDkim: true });
       return;
     }
     let active = true;
     void fetchMcpInfo().then((info) => { if (active) setMcpInfo(info); });
+    void fetchInboundInfo().then((info) => { if (active) setInboundInfo(info); });
     return () => { active = false; };
   }, []);
 
@@ -230,14 +239,22 @@ export default function App() {
   }, [dataMenuOpen]);
 
   useEffect(() => {
-    if (!notice) return;
-    const t = window.setTimeout(() => setNotice(null), 6000);
-    return () => window.clearTimeout(t);
-  }, [notice]);
+    if (storageError) notify({ kind: 'error', title: 'Storage notice', body: storageError });
+  }, [storageError, notify]);
 
   useEffect(() => {
-    if (storageError) setNotice(storageError);
-  }, [storageError]);
+    if (!undo) return;
+    // The store owns the eight-second undo window. Remove the card as soon
+    // as that snapshot expires or a newer undo operation replaces it.
+    const id = notify({
+      kind: undo.label.endsWith(' removed') ? 'removed' : 'info',
+      title: undo.label,
+      action: { label: 'Undo', onClick: actions.undo },
+      onDismiss: actions.dismissUndo,
+      duration: 0,
+    });
+    return () => dismissToast(id);
+  }, [undo, actions.undo, actions.dismissUndo, notify, dismissToast]);
 
   const visible = useMemo(
     () => data.customers.filter((c) => showArchived || c.status !== 'archived' || c.id === selectedId),
@@ -246,18 +263,21 @@ export default function App() {
 
   const tally = useMemo(() => {
     const live = new Set(data.customers.filter((c) => c.status !== 'archived').map((c) => c.id));
-    const t0 = today();
+    const t0 = day;
     let open = 0;
     let overdue = 0;
-    let dueToday = 0;
     for (const t of data.tasks) {
       if (t.status === 'done' || !live.has(t.customerId)) continue;
       open += 1;
       if (t.due && t.due < t0) overdue += 1;
-      else if (t.due === t0) dueToday += 1;
     }
-    return { customers: live.size, open, overdue, dueToday };
-  }, [data]);
+    return { customers: live.size, open, overdue, today: todayTasks(data.customers, data.tasks, t0).pending.length };
+  }, [data, day]);
+
+  const moveTargets = useMemo(
+    () => data.customers.filter((c) => c.status !== 'archived').sort((a, b) => a.name.localeCompare(b.name)),
+    [data.customers],
+  );
 
   // In a customer's workspace the search narrows the customer list.
   const listed = useMemo(() => {
@@ -300,7 +320,7 @@ export default function App() {
       actions.importData(parseImport(await file.text()));
       setSelectedId(null);
     } catch {
-      setNotice('Import failed: choose a JSON file exported from this board.');
+      notify({ kind: 'error', title: 'Import failed', body: 'Choose a JSON file exported from this board.' });
     }
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -327,7 +347,7 @@ export default function App() {
       data-home-theme={homeTheme === 'vivicta-pixel' ? 'vivicta' : homeTheme}
       data-art-style={homeTheme === 'vivicta-pixel' ? 'pixel' : undefined}
     >
-      <header className={`deck${selected ? ' deck-record' : ''}`}>
+      <header className={`deck${selected ? ' deck-record' : ''}${selected && timeTrackingEnabled ? ' has-time-island' : ''}`}>
         {selected && (
           <button type="button" className="back-key" onClick={() => setSelectedId(null)}>
             <IconArrowLeft width={17} height={17} />
@@ -347,6 +367,16 @@ export default function App() {
             MyWork
           </button>
         </h1>
+
+        {selected && timeTrackingEnabled && (
+          <TimeTrackerPanel
+            state={tracker.state}
+            customer={selected}
+            onPause={tracker.pause}
+            onResume={tracker.resume}
+            onShowSummary={() => setShowTimeSummary(true)}
+          />
+        )}
 
         {!selected && <p className="tally" role="status">
           <span className="tally-item">
@@ -385,12 +415,12 @@ export default function App() {
               className="key today-key"
               aria-pressed={view === 'today'}
               onClick={() => setView((v) => (v === 'today' ? 'map' : 'today'))}
-              title="Overdue and due-today tasks across all customers"
+              title="Deadlines, planned work and follow-ups across all customers"
             >
               <IconCalendar width={15} height={15} />
               Today
-              {tally.overdue + tally.dueToday > 0 && (
-                <span className={`num today-key-count${tally.overdue > 0 ? ' is-alert' : ''}`}>{tally.overdue + tally.dueToday}</span>
+              {tally.today > 0 && (
+                <span className={`num today-key-count${tally.overdue > 0 ? ' is-alert' : ''}`}>{tally.today}</span>
               )}
             </button>
           )}
@@ -487,6 +517,12 @@ export default function App() {
                     Connect AI assistant…
                   </button>
                 )}
+                {inboundInfo?.enabled && (
+                  <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); setShowInbound(true); }}>
+                    <IconMail width={16} height={16} />
+                    Email to task…
+                  </button>
+                )}
                 <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); exportJson(); }}>
                   <IconDownload width={16} height={16} />
                   Export JSON
@@ -530,7 +566,6 @@ export default function App() {
             layout={workspaceLayout}
             onLayoutChange={setWorkspaceLayout}
             tracker={timeTrackingEnabled ? tracker : undefined}
-            onShowSummary={() => setShowTimeSummary(true)}
             onSelectCustomer={setSelectedId}
             onAddCustomer={addCustomer}
             onUpdateCustomer={(patch) => actions.updateCustomer(selected.id, patch)}
@@ -548,6 +583,7 @@ export default function App() {
             onAddTask={(title, description, priority, due, status) => actions.addTask(selected.id, title, description, priority, due, status)}
             onUpdateTask={actions.updateTask}
             onRemoveTask={actions.removeTask}
+            moveTargets={moveTargets}
           />
         ) : view === 'today' ? (
           <TodayView
@@ -578,20 +614,7 @@ export default function App() {
         )}
       </main>
 
-      {(undo || notice) && (
-        <div className="toast" role="status">
-          <span>{notice ?? undo?.label}</span>
-          {undo && !notice ? (
-            <button type="button" className="text-key" onClick={actions.undo}>
-              Undo
-            </button>
-          ) : (
-            <button type="button" className="text-key" onClick={() => setNotice(null)}>
-              Dismiss
-            </button>
-          )}
-        </div>
-      )}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
       {showQuickAdd && (
         <QuickAddDialog
@@ -602,12 +625,15 @@ export default function App() {
           onAdd={(customerId, title, priority, due) => {
             actions.addTask(customerId, title, '', priority, due);
             const name = data.customers.find((c) => c.id === customerId)?.name ?? 'customer';
-            setNotice(`Task added to ${name}.`);
+            notify({ kind: 'success', title: 'Task added', body: `Added to ${name}.` });
           }}
         />
       )}
 
       {showMcp && mcpInfo?.enabled && <McpConnectDialog info={mcpInfo} onClose={() => setShowMcp(false)} />}
+      {showInbound && inboundInfo?.enabled && (
+        <EmailInboxDialog info={inboundInfo} onClose={() => setShowInbound(false)} onSaved={setInboundInfo} />
+      )}
       {showTimeSummary && (
         <TimeSummaryDialog
           state={tracker.state}

@@ -1,5 +1,5 @@
 export type CustomerStatus = 'active' | 'waiting' | 'paused' | 'archived';
-export type TaskStatus = 'open' | 'doing' | 'done';
+export type TaskStatus = 'open' | 'doing' | 'waiting' | 'done';
 export type Priority = 'normal' | 'high';
 
 export interface Contact {
@@ -15,6 +15,8 @@ export interface Customer {
   shortName?: string;
   status: CustomerStatus;
   notes: string;
+  /** Short handover to yourself when returning to this customer. */
+  nextStep?: string;
   contacts: Contact[];
   createdAt: string;
   touchedAt: string;
@@ -31,6 +33,12 @@ export interface Task {
   solution?: string;
   /** YYYY-MM-DD, local date */
   due?: string;
+  /** Who or what is blocking the task while its status is waiting. */
+  waitingFor?: string;
+  /** YYYY-MM-DD, independent of the task's deadline. */
+  followUp?: string;
+  /** Day chosen for working on the task; unfinished plans carry forward. */
+  plannedFor?: string;
   createdAt: string;
   updatedAt?: string;
   doneAt?: string;

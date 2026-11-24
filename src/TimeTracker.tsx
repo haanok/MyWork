@@ -1,48 +1,44 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toISODate } from './dates';
 import { IconCheck, IconClose, IconCopy } from './icons';
+import { DynamicIsland } from './DynamicIsland';
 import { formatClock, formatDuration, formatHours, dailyTotals, loggedDays, useNow, type TrackerState } from './timeTracking';
 import type { Customer, Task } from './types';
 
-/** Footer of the customer list: live clock plus the clock-out / resume controls. */
+/** Top-centred live activity, backed by the existing customer time log. */
 export function TimeTrackerPanel({
   state,
   customer,
-  totals,
   onPause,
   onResume,
   onShowSummary,
 }: {
   state: TrackerState;
   customer: Customer;
-  totals: Map<string, number>;
   onPause: () => void;
   onResume: () => void;
   onShowSummary: () => void;
 }) {
+  const now = useNow(state.running);
+  const totals = dailyTotals(state, now, toISODate(new Date(now)));
   const dayTotal = [...totals.values()].reduce((sum, ms) => sum + ms, 0);
   const name = customer.name || 'Untitled customer';
 
   return (
-    <section className={`time-tracker${state.running ? ' is-running' : ''}`} aria-label="Time tracking">
-      <div className="time-tracker-status">
-        <span className="time-tracker-dot" aria-hidden="true" />
-        <span className="time-tracker-copy">
-          <span className="time-tracker-label">{state.running ? `Tracking ${name}` : 'Tracking paused'}</span>
-          <span className="time-tracker-clock" aria-live="off">
-            {formatClock(totals.get(customer.id) ?? 0)}
-            <span className="time-tracker-total"> · {formatDuration(dayTotal)} total today</span>
-          </span>
-        </span>
-      </div>
-      <div className="time-tracker-actions">
-        {state.paused ? (
-          <button type="button" className="crm-primary small-primary" onClick={onResume}>Resume</button>
-        ) : (
-          <button type="button" className="crm-secondary" onClick={onPause}>Pause</button>
-        )}
-        <button type="button" className="crm-secondary" onClick={onShowSummary}>Summary</button>
-      </div>
+    <section className="time-tracker" aria-label="Time tracking">
+      <DynamicIsland
+        startOpen={false}
+        tone="White"
+        tracking={{
+          customerId: customer.id,
+          customerName: name,
+          elapsed: formatClock(totals.get(customer.id) ?? 0),
+          totalToday: `${formatDuration(dayTotal)} total`,
+          paused: state.paused,
+          onTogglePause: state.paused ? onResume : onPause,
+          onShowSummary,
+        }}
+      />
     </section>
   );
 }

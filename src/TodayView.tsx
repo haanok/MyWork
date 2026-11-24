@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { TaskEntry } from './TaskEntry';
-import { formatDueLong, toISODate, today } from './dates';
+import { formatDueLong } from './dates';
+import { todayTasks } from './taskPlanning';
+import { useToday } from './useToday';
 import type { Customer, Task } from './types';
 
 interface Props {
@@ -11,41 +13,33 @@ interface Props {
   onRemoveTask: (id: string) => void;
 }
 
-const byPriorityThenTitle = (a: Task, b: Task) =>
-  (a.priority === 'high' ? 0 : 1) - (b.priority === 'high' ? 0 : 1) || a.title.localeCompare(b.title);
-
-/**
- * Overdue and due-today tasks across every customer that is not archived.
- * Tasks closed today stay listed at the bottom, so ticking one off does not
- * make it vanish from under the pointer.
- */
+/** Deadlines, planned work and follow-ups; finished work stays visible today. */
 export function TodayView({ customers, tasks, onOpenCustomer, onUpdateTask, onRemoveTask }: Props) {
-  const t0 = today();
+  const t0 = useToday();
+  const [planning, setPlanning] = useState(false);
+  const [query, setQuery] = useState('');
   const customerById = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
+  const moveTargets = useMemo(
+    () => customers.filter((c) => c.status !== 'archived').sort((a, b) => a.name.localeCompare(b.name)),
+    [customers],
+  );
 
-  const { overdue, dueToday, doneToday } = useMemo(() => {
-    const overdue: Task[] = [];
-    const dueToday: Task[] = [];
-    const doneToday: Task[] = [];
-    for (const task of tasks) {
+  const { overdue, dueToday, planned, waiting, doneToday, pending } = useMemo(
+    () => todayTasks(customers, tasks, t0), [customers, tasks, t0],
+  );
+  const candidates = useMemo(() => {
+    const shown = new Set(pending.map((task) => task.id));
+    const q = query.trim().toLowerCase();
+    return tasks.filter((task) => {
       const customer = customerById.get(task.customerId);
-      if (!customer || customer.status === 'archived' || !task.due || task.due > t0) continue;
-      if (task.status === 'done') {
-        if (task.doneAt && toISODate(new Date(task.doneAt)) === t0) doneToday.push(task);
-      } else if (task.due < t0) {
-        overdue.push(task);
-      } else {
-        dueToday.push(task);
-      }
-    }
-    overdue.sort((a, b) => a.due!.localeCompare(b.due!) || byPriorityThenTitle(a, b));
-    dueToday.sort(byPriorityThenTitle);
-    doneToday.sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''));
-    return { overdue, dueToday, doneToday };
-  }, [tasks, customerById, t0]);
+      return customer && customer.status !== 'archived' && task.status !== 'done' && !shown.has(task.id)
+        && (!q || `${task.title} ${customer.name}`.toLowerCase().includes(q));
+    }).sort((a, b) => a.title.localeCompare(b.title));
+  }, [tasks, pending, customerById, query]);
 
-  const customerCount = new Set([...overdue, ...dueToday].map((t) => t.customerId)).size;
-  const clear = overdue.length === 0 && dueToday.length === 0;
+  const customerCount = new Set(pending.map((t) => t.customerId)).size;
+  const overdueCount = pending.filter((task) => task.due && task.due < t0).length;
+  const clear = pending.length === 0;
 
   const section = (title: string, list: Task[], tone?: 'alert' | 'quiet') =>
     list.length > 0 && (
@@ -60,6 +54,7 @@ export function TodayView({ customers, tasks, onOpenCustomer, onUpdateTask, onRe
               task={task}
               customer={customerById.get(task.customerId)}
               onOpenCustomer={onOpenCustomer}
+              moveTargets={moveTargets}
               onUpdate={onUpdateTask}
               onRemove={onRemoveTask}
             />
@@ -76,11 +71,33 @@ export function TodayView({ customers, tasks, onOpenCustomer, onUpdateTask, onRe
             <h2>Today</h2>
             <span className="record-meta">{formatDueLong(t0)} · all customers</span>
           </div>
+          <button type="button" className="crm-secondary" aria-expanded={planning} aria-controls="today-planner" onClick={() => setPlanning((value) => !value)}>
+            {planning ? 'Close planner' : 'Plan today'}
+          </button>
         </header>
 
+        {planning && (
+          <section id="today-planner" className="today-planner" aria-label="Plan today">
+            <h3>Add to your day</h3>
+            <p>Choose work for today. Deadlines stay as they are; unfinished plans carry forward.</p>
+            <input className="crm-field" type="search" aria-label="Find a task to plan" placeholder="Find a task or customer" value={query} onChange={(event) => setQuery(event.target.value)} autoFocus />
+            <ul className="today-plan-options">
+              {candidates.map((task) => (
+                <li key={task.id}>
+                  <div><strong>{task.title}</strong><span>{customerById.get(task.customerId)?.name}{task.due ? ` · Due ${formatDueLong(task.due)}` : ' · No deadline'}</span></div>
+                  <button type="button" className="crm-secondary" aria-label={`Plan for today: ${task.title}`} onClick={() => onUpdateTask(task.id, { plannedFor: t0 })}>Plan</button>
+                </li>
+              ))}
+            </ul>
+            {candidates.length === 0 && <p role="status">{query.trim() ? 'No matching tasks outside today’s list.' : 'No other open tasks to plan.'}</p>}
+          </section>
+        )}
+
         <div className="queue-summary" aria-label="Today summary">
-          <span className={overdue.length > 0 ? 'summary-alert' : ''}><b>{overdue.length}</b> overdue</span>
+          <span className={overdueCount > 0 ? 'summary-alert' : ''}><b>{overdueCount}</b> overdue</span>
           <span><b>{dueToday.length}</b> due today</span>
+          <span><b>{planned.length}</b> planned</span>
+          <span><b>{waiting.length}</b> waiting / follow-up</span>
           <span><b>{customerCount}</b> {customerCount === 1 ? 'customer' : 'customers'}</span>
           {doneToday.length > 0 && <span><b>{doneToday.length}</b> closed today</span>}
         </div>
@@ -88,13 +105,15 @@ export function TodayView({ customers, tasks, onOpenCustomer, onUpdateTask, onRe
         {clear && (
           <div className="queue-empty">
             <span className="empty-mark is-clear" aria-hidden="true">✓</span>
-            <p>Nothing overdue or due today.</p>
-            <span>{doneToday.length > 0 ? 'Everything due is closed. Nice work.' : 'Tasks with a due date of today or earlier show up here.'}</span>
+            <p>Nothing left for today.</p>
+            <span>{doneToday.length > 0 ? 'Today’s work is closed. Plan another task when you’re ready.' : 'Plan a task for today. Deadlines and follow-ups appear here when they’re due.'}</span>
           </div>
         )}
 
         {section('Overdue', overdue, 'alert')}
         {section('Due today', dueToday)}
+        {section('Planned work', planned)}
+        {section('Waiting & follow-ups', waiting)}
         {section('Closed today', doneToday, 'quiet')}
       </section>
     </div>
