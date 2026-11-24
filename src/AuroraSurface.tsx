@@ -10,7 +10,7 @@ const CURTAINS = [
 
 /** Internal resolution divisor: the canvas is upscaled by CSS, which softens the rays for free. */
 const SCALE = 4;
-type AuroraVariant = 'vivicta' | 'vivicta-pixel' | 'porcelain-light' | 'porcelain-dark';
+type AuroraVariant = 'vivicta' | 'vice' | 'vivicta-pixel' | 'porcelain-light' | 'porcelain-dark';
 
 function raySprite(stops: Array<[number, string]>): HTMLCanvasElement {
   const sprite = document.createElement('canvas');
@@ -65,6 +65,59 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
         return;
       }
       context.clearRect(0, 0, width, height);
+      if (variant === 'vice') {
+        // Sleek nocturnal Vice City neon horizon: luminous cyan, ultraviolet, and hot magenta mist.
+        context.globalCompositeOperation = 'lighter';
+        const horizon = height * 0.76;
+        const sweeps = [
+          { y: 0.72, height: 0.36, amp: 0.048, freq: 1.15, speed: 0.16, phase: 0.4, color: [255, 42, 157], alpha: 0.28 },
+          { y: 0.54, height: 0.44, amp: 0.058, freq: 0.85, speed: -0.11, phase: 2.3, color: [0, 240, 255], alpha: 0.23 },
+          { y: 0.65, height: 0.38, amp: 0.042, freq: 1.45, speed: 0.09, phase: 4.1, color: [185, 117, 255], alpha: 0.19 },
+        ] as const;
+
+        sweeps.forEach((sweep) => {
+          const [r, g, b] = sweep.color;
+          for (let x = 0; x < width; x += 2) {
+            const u = x / width;
+            const wave = Math.sin(u * Math.PI * 2 * sweep.freq + time * sweep.speed + sweep.phase)
+              + 0.4 * Math.cos(u * Math.PI * 3.1 - time * sweep.speed * 0.7 + sweep.phase);
+            const cy = height * (sweep.y + sweep.amp * wave);
+            const bandH = height * sweep.height * (0.85 + 0.15 * Math.sin(u * Math.PI * 2 + sweep.phase));
+            const envelope = Math.sin(Math.min(1, Math.max(0, u)) * Math.PI) ** 0.6;
+            const shimmer = 0.78 + 0.22 * Math.sin(u * 9 + time * 0.28 + sweep.phase);
+            const peak = sweep.alpha * envelope * shimmer;
+            if (peak <= 0.008) continue;
+            const grad = context.createLinearGradient(0, cy - bandH * 0.6, 0, cy + bandH * 0.4);
+            grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+            grad.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, ${peak})`);
+            grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            context.fillStyle = grad;
+            context.fillRect(x, cy - bandH * 0.6, 2, bandH);
+          }
+        });
+
+        // Crisp neon horizon laser + soft reflected glow below it.
+        const pulse = 0.34 + 0.1 * Math.sin(time * 0.4);
+        const lineGrad = context.createLinearGradient(0, horizon, width, horizon);
+        lineGrad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+        lineGrad.addColorStop(0.24, `rgba(0, 240, 255, ${pulse})`);
+        lineGrad.addColorStop(0.52, `rgba(185, 117, 255, ${pulse * 0.9})`);
+        lineGrad.addColorStop(0.78, `rgba(255, 42, 157, ${pulse * 1.15})`);
+        lineGrad.addColorStop(1, 'rgba(255, 42, 157, 0)');
+        context.fillStyle = lineGrad;
+        context.fillRect(0, Math.round(horizon), width, 1);
+
+        const glowGrad = context.createLinearGradient(0, horizon - 4, 0, horizon + 10);
+        glowGrad.addColorStop(0, 'rgba(255, 42, 157, 0)');
+        glowGrad.addColorStop(0.35, `rgba(255, 42, 157, ${pulse * 0.32})`);
+        glowGrad.addColorStop(0.65, `rgba(0, 240, 255, ${pulse * 0.24})`);
+        glowGrad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+        context.fillStyle = glowGrad;
+        context.fillRect(0, Math.round(horizon - 4), width, 14);
+
+        context.globalCompositeOperation = 'source-over';
+        return;
+      }
       if (variant !== 'vivicta') {
         const dark = variant === 'porcelain-dark';
         const bands = dark ? [
@@ -151,7 +204,7 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
       if (document.hidden) return;
       if (now - lastDraw >= 42) {
         const elapsed = Math.min((now - lastDraw) / 1000, 0.08);
-        time += reduced.matches ? 0 : elapsed * (variant === 'vivicta' || variant === 'vivicta-pixel' ? 1 : 1.45);
+        time += reduced.matches ? 0 : elapsed * (variant === 'vivicta' || variant === 'vice' || variant === 'vivicta-pixel' ? 1 : 1.45);
         draw();
         lastDraw = now;
       }

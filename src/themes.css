@@ -1541,3 +1541,468 @@
   .app[data-home-theme='porcelain-dark'] .vault-setup { background-image: none; }
   .app[data-home-theme='porcelain-dark'] .theme-swatch { border-color: #65777e; }
   .theme-swatch-porcelain-dark { border-color: #65777e; background: linear-gradient(145deg, #5a7689 15%, #314b5e 65%, #101314); }
+
+/* ------------------------------------------------------------------ */
+/* Vice: sleek minimalist Neon / Vice City. Obsidian-plum ground,      */
+/* luminous neon cyan actions, ultraviolet in-progress, and hot Vice   */
+/* magenta urgency over a glowing midnight coastal horizon.            */
+/* ------------------------------------------------------------------ */
+
+.app[data-home-theme='vice'] {
+  color-scheme: dark;
+  --space-void: #05040a;
+  --space-base: #080610;
+  --space-panel: #0e0a1a;
+  --space-raised: #161028;
+  --space-high: #20173a;
+  --space-line: #2d2250;
+  --space-fg: #f5f0ff;
+  --space-muted: #b7aad4;
+  --space-quiet: #9182b3;
+  --space-cyan: #00f0ff;
+  --space-blue: #b975ff;
+  --space-pink: #ff2a9d;
+  --space-coral: #ff2a9d;
+  --space-green: #2effb5;
+  --space-radius: 4px;
+  background: var(--space-base);
+  color: var(--space-fg);
+  accent-color: var(--space-cyan);
+  caret-color: var(--space-cyan);
+}
+
+.app[data-home-theme='vice'] * {
+  scrollbar-color: #3d2d6b transparent;
+}
+
+.app[data-home-theme='vice'] ::selection {
+  color: #05040a;
+  background: var(--space-cyan);
+}
+
+.app[data-home-theme='vice'] :focus-visible {
+  outline: 2px solid var(--space-cyan);
+  outline-offset: 2px;
+  box-shadow: 0 0 14px -2px rgb(0 240 255 / 45%);
+}
+
+.app[data-home-theme='vice'] .deck {
+  border-bottom: 1px solid rgb(0 240 255 / 24%);
+  background: rgb(8 6 16 / 88%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 20px -10px rgb(0 240 255 / 26%);
+}
+
+.app[data-home-theme='vice'] .deck::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(0 240 255 / 78%) 22%,
+    rgb(185 117 255 / 55%) 54%,
+    rgb(255 42 157 / 78%) 82%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px rgb(0 240 255 / 45%);
+}
+
+.app[data-home-theme='vice'] .wordmark {
+  letter-spacing: 0.025em;
+  text-shadow: 0 0 16px rgb(0 240 255 / 28%);
+}
+
+.app[data-home-theme='vice'] .search {
+  border-color: var(--space-line);
+  background: #06040d;
+}
+
+.app[data-home-theme='vice'] .search:focus-within {
+  border-color: rgb(0 240 255 / 80%);
+  box-shadow: 0 0 14px -4px rgb(0 240 255 / 45%);
+}
+
+.app[data-home-theme='vice'] :is(.back-key, .crm-secondary, .key, .icon-key):hover {
+  border-color: rgb(0 240 255 / 58%);
+  background: var(--space-raised);
+  color: var(--space-fg);
+  box-shadow: 0 0 14px -6px rgb(0 240 255 / 40%);
+}
+
+.app[data-home-theme='vice'] .crm-primary,
+.app[data-home-theme='vice'] .key.primary {
+  border-color: var(--space-cyan);
+  background: var(--space-cyan);
+  color: #031518;
+  box-shadow: 0 4px 16px -6px rgb(0 240 255 / 62%);
+}
+
+.app[data-home-theme='vice'] .crm-primary:hover:not(:disabled),
+.app[data-home-theme='vice'] .key.primary:hover:not(:disabled) {
+  border-color: #66f7ff;
+  background: #66f7ff;
+  color: #031518;
+  box-shadow: 0 4px 20px -4px rgb(0 240 255 / 80%);
+}
+
+.app[data-home-theme='vice'] .crm-primary:disabled {
+  border-color: var(--space-line);
+  background: var(--space-raised);
+  color: var(--space-quiet);
+  box-shadow: none;
+}
+
+.app[data-home-theme='vice'] .today-key[aria-pressed='true'] {
+  border-color: rgb(0 240 255 / 62%);
+  background: #09232c;
+  color: var(--space-cyan);
+  box-shadow: 0 0 14px -5px rgb(0 240 255 / 40%);
+}
+
+.app[data-home-theme='vice'] .today-key-count {
+  background: var(--space-high);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='vice'] .today-key-count.is-alert {
+  background: var(--space-pink);
+  color: #1f0211;
+  box-shadow: 0 0 12px -2px rgb(255 42 157 / 72%);
+}
+
+.app[data-home-theme='vice'] .pip {
+  background: var(--space-cyan);
+  box-shadow: 0 0 8px rgb(0 240 255 / 65%);
+}
+
+.app[data-home-theme='vice'] .pip.lamp-overdue {
+  background: var(--space-pink);
+  box-shadow: 0 0 8px rgb(255 42 157 / 68%);
+}
+
+.app[data-home-theme='vice'] .pip.lamp-clear {
+  background: var(--space-green);
+  box-shadow: 0 0 8px rgb(46 255 181 / 55%);
+}
+
+/* Map: obsidian coastal midnight with a crisp neon hairline grid and luminous Vice horizon. */
+.stage[data-home-theme='vice'] {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 98% 46% at 50% 106%, rgb(255 42 157 / 22%) 0%, transparent 64%),
+    radial-gradient(ellipse 84% 48% at 18% 92%, rgb(0 240 255 / 15%) 0%, transparent 62%),
+    linear-gradient(180deg, #040309 0%, #080612 56%, #180b29 100%);
+}
+
+.stage[data-home-theme='vice']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(255 42 157 / 8%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(0 240 255 / 7%) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 35%) 50%, rgb(0 0 0 / 92%) 100%);
+}
+
+.stage[data-home-theme='vice'] .aurora-sky {
+  filter: blur(9px) saturate(1.25);
+  opacity: 0.96;
+  mix-blend-mode: screen;
+}
+
+.stage[data-home-theme='vice'] .map {
+  background: transparent;
+}
+
+/* Customers: smoked-obsidian discs with luminous neon hairline rims and status underglow. */
+.stage[data-home-theme='vice'] .lamp {
+  border: 1.5px solid rgb(0 240 255 / 78%);
+  background:
+    radial-gradient(circle at 50% -14%, rgb(0 240 255 / 30%), transparent 60%),
+    linear-gradient(180deg, rgb(18 14 36 / 90%) 0%, rgb(9 7 18 / 95%) 100%);
+  color: #f7f4ff;
+  text-shadow: 0 0 12px rgb(0 240 255 / 45%);
+  box-shadow:
+    inset 0 1px 0 rgb(160 250 255 / 40%),
+    inset 0 0 14px -6px rgb(0 240 255 / 40%),
+    0 12px 26px -14px rgb(0 0 0 / 94%),
+    0 8px 24px -10px rgb(0 240 255 / 52%);
+  backdrop-filter: blur(8px);
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 180ms ease, box-shadow 220ms ease;
+}
+
+.stage[data-home-theme='vice'] .lamp:hover {
+  transform: translateY(-2px);
+  border-color: var(--space-cyan);
+  box-shadow:
+    inset 0 1px 0 rgb(210 253 255 / 55%),
+    inset 0 0 18px -4px rgb(0 240 255 / 55%),
+    0 16px 32px -14px rgb(0 0 0 / 96%),
+    0 10px 28px -8px rgb(0 240 255 / 72%);
+}
+
+.stage[data-home-theme='vice'] .lamp-open .lamp {
+  border-color: rgb(0 240 255 / 88%);
+}
+
+.stage[data-home-theme='vice'] .lamp-doing .lamp {
+  border-color: rgb(185 117 255 / 84%);
+  background:
+    radial-gradient(circle at 50% -14%, rgb(185 117 255 / 32%), transparent 60%),
+    linear-gradient(180deg, rgb(24 16 48 / 92%) 0%, rgb(11 8 24 / 96%) 100%);
+  text-shadow: 0 0 12px rgb(185 117 255 / 48%);
+  box-shadow:
+    inset 0 1px 0 rgb(228 200 255 / 40%),
+    inset 0 0 14px -6px rgb(185 117 255 / 42%),
+    0 12px 26px -14px rgb(0 0 0 / 94%),
+    0 8px 24px -10px rgb(185 117 255 / 52%);
+}
+
+.stage[data-home-theme='vice'] .lamp-doing .lamp:hover {
+  border-color: var(--space-blue);
+  box-shadow:
+    inset 0 1px 0 rgb(235 214 255 / 55%),
+    inset 0 0 18px -4px rgb(185 117 255 / 58%),
+    0 16px 32px -14px rgb(0 0 0 / 96%),
+    0 10px 28px -8px rgb(185 117 255 / 72%);
+}
+
+.stage[data-home-theme='vice'] .lamp-overdue .lamp {
+  border-color: rgb(255 42 157 / 92%);
+  background:
+    radial-gradient(circle at 50% -14%, rgb(255 42 157 / 36%), transparent 62%),
+    linear-gradient(180deg, rgb(42 12 32 / 93%) 0%, rgb(18 6 16 / 96%) 100%);
+  text-shadow: 0 0 12px rgb(255 42 157 / 52%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 186 226 / 42%),
+    inset 0 0 16px -6px rgb(255 42 157 / 48%),
+    0 12px 28px -14px rgb(0 0 0 / 95%),
+    0 10px 28px -8px rgb(255 42 157 / 62%);
+}
+
+.stage[data-home-theme='vice'] .lamp-overdue .lamp:hover {
+  border-color: var(--space-pink);
+  box-shadow:
+    inset 0 1px 0 rgb(255 204 234 / 58%),
+    inset 0 0 20px -4px rgb(255 42 157 / 62%),
+    0 16px 32px -14px rgb(0 0 0 / 96%),
+    0 10px 30px -6px rgb(255 42 157 / 80%);
+}
+
+.stage[data-home-theme='vice'] .lamp-clear .lamp {
+  border-color: rgb(46 255 181 / 42%);
+  background: linear-gradient(180deg, rgb(14 14 28 / 84%) 0%, rgb(9 8 18 / 90%) 100%);
+  color: #b7c8d6;
+  text-shadow: none;
+  box-shadow:
+    inset 0 1px 0 rgb(168 255 224 / 18%),
+    0 10px 22px -14px rgb(0 0 0 / 86%),
+    0 6px 18px -12px rgb(46 255 181 / 24%);
+}
+
+.stage[data-home-theme='vice'] .lamp-clear .lamp:hover {
+  border-color: rgb(46 255 181 / 78%);
+  color: var(--space-fg);
+  box-shadow:
+    inset 0 1px 0 rgb(186 255 230 / 35%),
+    0 14px 26px -14px rgb(0 0 0 / 92%),
+    0 8px 22px -10px rgb(46 255 181 / 45%);
+}
+
+.stage[data-home-theme='vice'] .strip {
+  border-color: rgb(0 240 255 / 30%);
+  background: rgb(10 8 20 / 88%);
+  color: var(--space-fg);
+  backdrop-filter: blur(10px);
+}
+
+.stage[data-home-theme='vice'] .cord-edge {
+  stroke: #05040a;
+}
+
+.stage[data-home-theme='vice'] .cord-core {
+  stroke: var(--space-cyan);
+}
+
+.stage[data-home-theme='vice'] .cord-plug {
+  fill: var(--space-pink);
+  stroke: #05040a;
+}
+
+.stage[data-home-theme='vice'] :is(.socket, .empty-orb) {
+  border-color: rgb(0 240 255 / 62%);
+  background:
+    radial-gradient(circle at 50% 0%, rgb(0 240 255 / 18%), rgb(10 8 20 / 92%) 70%);
+  color: var(--space-cyan);
+  box-shadow: 0 8px 24px -12px rgb(0 240 255 / 42%);
+}
+
+.stage[data-home-theme='vice'] :is(.socket, .empty-orb):hover {
+  border-color: var(--space-pink);
+  color: var(--space-fg);
+  box-shadow: 0 8px 26px -10px rgb(255 42 157 / 55%);
+}
+
+.stage[data-home-theme='vice'] .legend {
+  color: var(--space-muted);
+}
+
+/* Workspace: sleek obsidian panels, neon hairline accents, dual-tone top wash. */
+.app[data-home-theme='vice'] .crm-workspace {
+  background: var(--space-base);
+}
+
+.app[data-home-theme='vice'] .crm-main {
+  background:
+    radial-gradient(ellipse 62% 200px at 20% 0%, rgb(0 240 255 / 9%), transparent 100%),
+    radial-gradient(ellipse 58% 200px at 84% 0%, rgb(255 42 157 / 8%), transparent 100%);
+}
+
+.app[data-home-theme='vice'] .customer-rail,
+.app[data-home-theme='vice'] .context-rail {
+  background: var(--space-panel);
+}
+
+.app[data-home-theme='vice'] .customer-nav-item {
+  border-bottom-color: rgb(45 34 80 / 68%);
+}
+
+.app[data-home-theme='vice'] .customer-nav-item:hover {
+  background: #151028;
+}
+
+.app[data-home-theme='vice'] .customer-nav-item.is-current {
+  background: linear-gradient(90deg, rgb(0 240 255 / 14%) 0%, rgb(16 32 44 / 65%) 55%, transparent 100%);
+}
+
+.app[data-home-theme='vice'] :is(.contact-avatar, .record-mark, .customer-mark, .empty-mark) {
+  border-color: rgb(0 240 255 / 48%);
+  background: #101928;
+  color: #b5fcff;
+  box-shadow: inset 0 0 10px -5px rgb(0 240 255 / 45%);
+}
+
+.app[data-home-theme='vice'] .empty-mark.is-clear {
+  border-color: rgb(46 255 181 / 52%);
+  color: var(--space-green);
+}
+
+.app[data-home-theme='vice'] .customer-nav-count {
+  background: var(--space-high);
+  color: var(--space-fg);
+}
+
+.app[data-home-theme='vice'] .task-composer {
+  border-color: #34265c;
+  background: #0d0a1a;
+  box-shadow: inset 0 1px 0 rgb(0 240 255 / 14%);
+}
+
+.app[data-home-theme='vice'] :is(.crm-field, .short-name-input, .quick-add-input, .task-status-select, .customer-status-control select) {
+  border-color: #33275a;
+  background: #070510;
+}
+
+.app[data-home-theme='vice'] :is(.crm-field, .short-name-input, .quick-add-input):focus {
+  border-color: rgb(0 240 255 / 80%);
+  box-shadow: 0 0 14px -4px rgb(0 240 255 / 42%);
+}
+
+.app[data-home-theme='vice'] .task-status-select.st-doing {
+  border-color: rgb(185 117 255 / 78%);
+  color: #ddc2ff;
+}
+
+.app[data-home-theme='vice'] .task-status-select.st-done {
+  border-color: rgb(46 255 181 / 55%);
+  color: var(--space-green);
+}
+
+.app[data-home-theme='vice'] :is(.priority-control, .task-filters) {
+  border-color: var(--space-line);
+  background: #070510;
+}
+
+.app[data-home-theme='vice'] :is(.priority-control button.is-active, .task-filters button.is-active) {
+  background: #1f173b;
+  color: var(--space-fg);
+  box-shadow: inset 0 1px 0 rgb(0 240 255 / 22%);
+}
+
+.app[data-home-theme='vice'] .task-entry:hover {
+  background: rgb(25 18 48 / 62%);
+}
+
+.app[data-home-theme='vice'] .task-entry.is-complete .task-title-line h4 {
+  text-decoration-color: #6b5c8c;
+}
+
+.app[data-home-theme='vice'] .task-description,
+.app[data-home-theme='vice'] .task-solution p {
+  color: #d2c8e8;
+}
+
+.app[data-home-theme='vice'] .task-customer {
+  border-color: rgb(0 240 255 / 42%);
+  background: #0d1f29;
+}
+
+.app[data-home-theme='vice'] .task-customer:hover {
+  border-color: rgb(0 240 255 / 78%);
+  background: #102a36;
+}
+
+.app[data-home-theme='vice'] .kanban-column {
+  border-color: var(--space-line);
+  background: rgb(14 10 26 / 88%);
+}
+
+.app[data-home-theme='vice'] .kanban-column.is-drop-target {
+  border-color: var(--space-cyan);
+  background: rgb(10 30 40 / 84%);
+  box-shadow: inset 0 0 18px -8px rgb(0 240 255 / 40%);
+}
+
+.app[data-home-theme='vice'] .kanban-add-row:hover {
+  border-color: rgb(0 240 255 / 58%);
+  color: var(--space-cyan);
+}
+
+.app[data-home-theme='vice'] :is(.data-menu-list, .import-dialog, .quick-add-dialog, .mcp-dialog, .toast, .vault-setup-content) {
+  border-color: #3a2b66;
+  background: linear-gradient(180deg, #140f26 0%, #0a0814 120px);
+  box-shadow:
+    0 22px 48px -20px rgb(0 0 0 / 94%),
+    0 0 24px -14px rgb(0 240 255 / 32%),
+    inset 0 1px 0 rgb(0 240 255 / 30%);
+}
+
+.app[data-home-theme='vice'] .import-dialog::backdrop {
+  background: rgb(4 3 9 / 78%);
+}
+
+.app[data-home-theme='vice'] .vault-setup {
+  background-image: none;
+}
+
+.theme-swatch-vice {
+  border-color: rgb(0 240 255 / 85%);
+  background: linear-gradient(135deg, #00f0ff 0% 35%, #0d091c 36% 64%, #ff2a9d 65% 100%);
+  box-shadow: 0 0 8px -2px rgb(0 240 255 / 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage[data-home-theme='vice'] .lamp {
+    transition: none;
+  }
+
+  .stage[data-home-theme='vice'] .lamp:hover {
+    transform: none;
+  }
+}
