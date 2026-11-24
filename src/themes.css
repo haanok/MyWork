@@ -1721,7 +1721,7 @@
   inset: -12px;
   width: calc(100% + 24px);
   height: calc(100% + 24px);
-  filter: blur(3.2px) saturate(1.22);
+  filter: blur(2.2px) saturate(1.22);
   opacity: 0.96;
   mix-blend-mode: normal;
 }
