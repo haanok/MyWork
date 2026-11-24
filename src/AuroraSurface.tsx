@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { createPixelScene, type PixelScene } from './pixelScene';
+import { createViceCityScene, type ViceCityScene } from './viceCityScene';
 
 /** Curtain layers: each is a ribbon of vertical rays hanging from a slowly bending lower edge. */
 const CURTAINS = [
@@ -10,7 +11,7 @@ const CURTAINS = [
 
 /** Internal resolution divisor: the canvas is upscaled by CSS, which softens the rays for free. */
 const SCALE = 4;
-type AuroraVariant = 'vivicta' | 'vice' | 'vivicta-pixel' | 'porcelain-light' | 'porcelain-dark';
+type AuroraVariant = 'vivicta' | 'vice' | 'vice-simple' | 'vivicta-pixel' | 'porcelain-light' | 'porcelain-dark';
 
 function raySprite(stops: Array<[number, string]>): HTMLCanvasElement {
   const sprite = document.createElement('canvas');
@@ -57,6 +58,7 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
     let lastDraw = 0;
     let time = 37;
     let scene: PixelScene | null = null;
+    let viceScene: ViceCityScene | null = null;
 
     const draw = () => {
       if (width <= 0 || height <= 0) return;
@@ -64,9 +66,13 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
         scene?.draw(context, time);
         return;
       }
-      context.clearRect(0, 0, width, height);
       if (variant === 'vice') {
-        // Sleek nocturnal Vice City neon horizon: luminous cyan, ultraviolet, and hot magenta mist.
+        viceScene?.draw(context, time);
+        return;
+      }
+      context.clearRect(0, 0, width, height);
+      if (variant === 'vice-simple') {
+        // Simple Vice neon horizon: luminous cyan, ultraviolet, and hot magenta atmospheric ribbons.
         context.globalCompositeOperation = 'lighter';
         const horizon = height * 0.76;
         const sweeps = [
@@ -96,7 +102,6 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
           }
         });
 
-        // Crisp neon horizon laser + soft reflected glow below it.
         const pulse = 0.34 + 0.1 * Math.sin(time * 0.4);
         const lineGrad = context.createLinearGradient(0, horizon, width, horizon);
         lineGrad.addColorStop(0, 'rgba(0, 240, 255, 0)');
@@ -204,7 +209,7 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
       if (document.hidden) return;
       if (now - lastDraw >= 42) {
         const elapsed = Math.min((now - lastDraw) / 1000, 0.08);
-        time += reduced.matches ? 0 : elapsed * (variant === 'vivicta' || variant === 'vice' || variant === 'vivicta-pixel' ? 1 : 1.45);
+        time += reduced.matches ? 0 : elapsed * (variant === 'vivicta' || variant === 'vice' || variant === 'vice-simple' || variant === 'vivicta-pixel' ? 1 : 1.45);
         draw();
         lastDraw = now;
       }
@@ -215,9 +220,11 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
     };
     const resize = () => {
       const pixel = variant === 'vivicta-pixel';
+      const fullRes = variant === 'vice';
+      const divisor = fullRes ? 1 : SCALE;
       const round = pixel ? Math.ceil : Math.round;
-      width = Math.max(1, round(stage.clientWidth / SCALE));
-      height = Math.max(1, round(stage.clientHeight / SCALE));
+      width = Math.max(1, round(stage.clientWidth / divisor));
+      height = Math.max(1, round(stage.clientHeight / divisor));
       canvas.width = width;
       canvas.height = height;
       if (pixel) {
@@ -225,6 +232,10 @@ export function AuroraSurface({ active, variant = 'vivicta' }: { active: boolean
         canvas.style.width = `${width * SCALE}px`;
         canvas.style.height = `${height * SCALE}px`;
         scene = createPixelScene(width, height);
+      } else if (fullRes) {
+        canvas.style.width = '';
+        canvas.style.height = '';
+        viceScene = createViceCityScene(width, height);
       }
       draw();
     };

@@ -36,8 +36,10 @@ function useCompact() {
 const NEXT_STATUS = { open: 'doing', doing: 'done', waiting: 'doing', done: 'open' } as const;
 const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'vice', 'vivicta-pixel', 'porcelain', 'porcelain-dark'] as const;
 const MAP_CENTER_DRIFT_KEY = 'mywork-map-center-drift';
+const VICE_BACKDROP_KEY = 'mywork-vice-backdrop';
 const WORKSPACE_LAYOUT_KEY = 'mywork-workspace-layout';
 type HomeTheme = (typeof HOME_THEMES)[number];
+type ViceBackdrop = 'city' | 'simple';
 const THEME_LABELS: Record<HomeTheme, string> = { spacewave: 'Spacewave', drift: 'Drift', paper: 'Paper', vivicta: 'Vivicta', vice: 'Vice', 'vivicta-pixel': 'Vivicta Pixel', porcelain: 'Porcelain', 'porcelain-dark': 'Porcelain Dark' };
 type View = 'map' | 'today';
 
@@ -46,6 +48,14 @@ function savedCenterDrift() {
     return window.localStorage.getItem(MAP_CENTER_DRIFT_KEY) !== 'false';
   } catch {
     return true;
+  }
+}
+
+function savedViceBackdrop(): ViceBackdrop {
+  try {
+    return window.localStorage.getItem(VICE_BACKDROP_KEY) === 'simple' ? 'simple' : 'city';
+  } catch {
+    return 'city';
   }
 }
 
@@ -85,6 +95,7 @@ export default function App() {
   const compact = useCompact();
   const day = useToday();
   const [homeTheme, setHomeTheme] = useState<HomeTheme>(savedHomeTheme);
+  const [viceBackdrop, setViceBackdrop] = useState<ViceBackdrop>(savedViceBackdrop);
   const [centerBubbles, setCenterBubbles] = useState(savedCenterDrift);
   const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>(savedWorkspaceLayout);
   const [timeTrackingEnabled, setTimeTrackingEnabled] = useState(savedTimeTrackingEnabled);
@@ -115,6 +126,14 @@ export default function App() {
       // The selected theme still applies for this session when storage is unavailable.
     }
   }, [homeTheme]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(VICE_BACKDROP_KEY, viceBackdrop);
+    } catch {
+      // The selected backdrop still applies for this session when storage is unavailable.
+    }
+  }, [viceBackdrop]);
 
   useEffect(() => {
     try {
@@ -484,6 +503,18 @@ export default function App() {
                 <div className="data-menu-divider" role="separator" />
                 <div role="group" aria-labelledby="options-menu-label" className="data-menu-group">
                   <p id="options-menu-label" className="data-menu-heading">Options</p>
+                  {homeTheme === 'vice' && (
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={viceBackdrop === 'city'}
+                      title="Switch between the 3D neon city skyline and the simple neon horizon backdrop."
+                      onClick={() => setViceBackdrop((mode) => (mode === 'city' ? 'simple' : 'city'))}
+                    >
+                      Vice 3D city backdrop
+                      {viceBackdrop === 'city' && <IconCheck className="data-menu-check" width={15} height={15} />}
+                    </button>
+                  )}
                   <button
                     type="button"
                     role="menuitemcheckbox"
@@ -548,10 +579,11 @@ export default function App() {
         className={`stage${selected ? ' has-workspace' : ''}`}
         data-home-theme={!selected && view === 'map' ? (homeTheme === 'vivicta-pixel' ? 'vivicta' : homeTheme) : undefined}
         data-art-style={!selected && view === 'map' && homeTheme === 'vivicta-pixel' ? 'pixel' : undefined}
+        data-vice-backdrop={!selected && view === 'map' && homeTheme === 'vice' ? viceBackdrop : undefined}
       >
         {homeTheme === 'drift' && <DriftSurface water={!selected && view === 'map'} />}
         {homeTheme === 'vivicta' && <AuroraSurface active={!selected && view === 'map'} />}
-        {homeTheme === 'vice' && <AuroraSurface active={!selected && view === 'map'} variant="vice" />}
+        {homeTheme === 'vice' && <AuroraSurface active={!selected && view === 'map'} variant={viceBackdrop === 'city' ? 'vice' : 'vice-simple'} />}
         {homeTheme === 'vivicta-pixel' && <AuroraSurface active={!selected && view === 'map'} variant="vivicta-pixel" />}
         {homeTheme === 'porcelain' && <AuroraSurface active={!selected && view === 'map'} variant="porcelain-light" />}
         {homeTheme === 'porcelain-dark' && <AuroraSurface active={!selected && view === 'map'} variant="porcelain-dark" />}
