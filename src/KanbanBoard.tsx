@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type KeyboardEvent, type SyntheticEvent } from 'react';
 import { today } from './dates';
-import { IconFlag, IconPlus } from './icons';
-import { STATUS_LABEL, TASK_DRAG_TYPE, TaskEntry } from './TaskEntry';
+import { IconClose, IconFlag, IconPlus } from './icons';
+import { STATUS_LABEL, TASK_DRAG_TYPE, TaskEntry, type KanbanCardMode } from './TaskEntry';
 import type { Customer, Priority, Task, TaskStatus } from './types';
 import { DateField } from './DateField';
 
@@ -13,6 +13,9 @@ interface Props {
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onRemoveTask: (id: string) => void;
   moveTargets?: Customer[];
+  /** Customer shown as context in the focus view. */
+  customer?: Customer;
+  cardMode?: KanbanCardMode;
 }
 
 function sortColumn(status: TaskStatus, list: Task[]) {
@@ -27,9 +30,16 @@ function sortColumn(status: TaskStatus, list: Task[]) {
 }
 
 /** Tasks for one customer grouped by status. Cards can be dragged between columns. */
-export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask, moveTargets }: Props) {
+export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask, moveTargets, customer, cardMode = 'expand' }: Props) {
   const [dropTarget, setDropTarget] = useState<TaskStatus | null>(null);
   const [composerFor, setComposerFor] = useState<TaskStatus | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const focusTask = focusId ? tasks.find((task) => task.id === focusId) ?? null : null;
+
+  // Close the focus view when its task is deleted or moved to another customer.
+  useEffect(() => {
+    if (focusId && !focusTask) setFocusId(null);
+  }, [focusId, focusTask]);
 
   const columns = useMemo(() => {
     const grouped: Record<TaskStatus, Task[]> = { open: [], doing: [], waiting: [], done: [] };
@@ -100,7 +110,16 @@ export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask, move
               {list.length === 0 && composerFor !== status ? (
                 <p className="kanban-empty">{status === 'done' ? 'Drop finished tasks here.' : 'No tasks here.'}</p>
               ) : list.map((task) => (
-                <TaskEntry key={task.id} task={task} variant="card" onUpdate={onUpdateTask} onRemove={onRemoveTask} moveTargets={moveTargets} />
+                <TaskEntry
+                  key={task.id}
+                  task={task}
+                  variant="card"
+                  cardMode={cardMode}
+                  onEnhance={setFocusId}
+                  onUpdate={onUpdateTask}
+                  onRemove={onRemoveTask}
+                  moveTargets={moveTargets}
+                />
               ))}
             </div>
 
@@ -112,7 +131,81 @@ export function KanbanBoard({ tasks, onAddTask, onUpdateTask, onRemoveTask, move
           </section>
         );
       })}
+      {focusTask && (
+        <TaskFocusDialog
+          key={focusTask.id}
+          task={focusTask}
+          customer={customer}
+          moveTargets={moveTargets}
+          onUpdate={onUpdateTask}
+          onRemove={onRemoveTask}
+          onClose={() => setFocusId(null)}
+        />
+      )}
     </div>
+  );
+}
+
+/** Enlarged view of a single task, opened from a kanban card in "click to enhance" mode. */
+function TaskFocusDialog({
+  task,
+  customer,
+  moveTargets,
+  onUpdate,
+  onRemove,
+  onClose,
+}: {
+  task: Task;
+  customer?: Customer;
+  moveTargets?: Customer[];
+  onUpdate: (id: string, patch: Partial<Task>) => void;
+  onRemove: (id: string) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = `task-focus-${task.id}`;
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+
+  const close = () => ref.current?.close();
+
+  // Escape inside the task editor cancels the edit instead of closing the whole view.
+  const onCancel = (event: SyntheticEvent<HTMLDialogElement>) => {
+    if (ref.current?.querySelector('.task-entry.is-editing')) event.preventDefault();
+  };
+
+  return (
+    <dialog
+      ref={ref}
+      className="import-dialog task-focus-dialog"
+      aria-labelledby={titleId}
+      onCancel={onCancel}
+      onClose={onClose}
+      onClick={(event) => { if (event.target === event.currentTarget) close(); }}
+    >
+      <div className="mcp-head task-focus-head">
+        <p id={titleId} className="task-focus-context">
+          <span className={`kanban-dot st-${task.status}`} aria-hidden="true" />
+          <span>{STATUS_LABEL[task.status]}</span>
+          {customer && <><span aria-hidden="true">·</span><span>{customer.name || 'Untitled customer'}</span></>}
+          <span className="visually-hidden">: {task.title}</span>
+        </p>
+        <button type="button" className="icon-key" onClick={close} aria-label="Close focus view">
+          <IconClose width={16} height={16} />
+        </button>
+      </div>
+      <TaskEntry
+        task={task}
+        variant="detail"
+        customer={customer}
+        moveTargets={moveTargets}
+        onUpdate={onUpdate}
+        onRemove={(id) => { onRemove(id); close(); }}
+      />
+    </dialog>
   );
 }
 

@@ -1,4 +1,5 @@
-import { useState, type DragEvent, type KeyboardEvent } from 'react';
+import { useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import { ChevronDown, Maximize2 } from 'lucide-react';
 import { formatDueLong, relativeDue, today } from './dates';
 import { IconFlag, IconTrash } from './icons';
 import type { Customer, Task, TaskStatus } from './types';
@@ -14,6 +15,17 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
 /** MIME type used when dragging a task card between kanban columns. */
 export const TASK_DRAG_TYPE = 'application/x-mywork-task';
 
+const INTERACTIVE = 'button, a, input, select, textarea, label, [contenteditable="true"]';
+
+function formatStamp(iso: string | undefined) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export type KanbanCardMode = 'expand' | 'enhance';
+
 export function TaskEntry({
   task,
   onUpdate,
@@ -22,6 +34,8 @@ export function TaskEntry({
   onOpenCustomer,
   moveTargets,
   variant = 'row',
+  cardMode = 'expand',
+  onEnhance,
 }: {
   task: Task;
   onUpdate: (id: string, patch: Partial<Task>) => void;
@@ -31,8 +45,11 @@ export function TaskEntry({
   onOpenCustomer?: (id: string) => void;
   /** Customers the task can be moved to from the editor. */
   moveTargets?: Customer[];
-  /** `card` renders a compact, draggable card for the kanban board. */
-  variant?: 'row' | 'card';
+  /** `card` renders a compact, draggable kanban card; `detail` renders the full task in the focus view. */
+  variant?: 'row' | 'card' | 'detail';
+  /** How a kanban card reveals details: inline (`expand`) or in the focus view (`enhance`). */
+  cardMode?: KanbanCardMode;
+  onEnhance?: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -88,6 +105,30 @@ export function TaskEntry({
   };
 
   const isCard = variant === 'card';
+  const isDetail = variant === 'detail';
+  const enhance = isCard && cardMode === 'enhance' && !!onEnhance;
+  const [cardOpen, setCardOpen] = useState(false);
+  const cardToggleRef = useRef<HTMLButtonElement>(null);
+  const collapsed = isCard && (enhance || !cardOpen) && !editing;
+  const createdLabel = formatStamp(task.createdAt);
+  const doneLabel = task.status === 'done' ? formatStamp(task.doneAt) : null;
+  const openCard = () => (enhance ? onEnhance?.(task.id) : setCardOpen((open) => !open));
+
+  // Clicking empty card space opens details; controls, links, and text selection keep their own behavior.
+  const onCardClick = (event: MouseEvent<HTMLElement>) => {
+    if (!isCard || editing) return;
+    if ((event.target as Element).closest(INTERACTIVE)) return;
+    if (window.getSelection()?.toString()) return;
+    openCard();
+  };
+
+  const onCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (!isCard || enhance || editing || !cardOpen || event.key !== 'Escape') return;
+    event.stopPropagation();
+    setCardOpen(false);
+    cardToggleRef.current?.focus();
+  };
+
   const [dragging, setDragging] = useState(false);
   const onDragStart = (event: DragEvent<HTMLElement>) => {
     event.dataTransfer.setData(TASK_DRAG_TYPE, task.id);
@@ -98,10 +139,12 @@ export function TaskEntry({
 
   return (
     <article
-      className={`task-entry${isCard ? ' is-card' : ''}${dragging ? ' is-dragging' : ''}${overdue ? ' is-overdue' : ''}${task.status === 'done' ? ' is-complete' : ''}${editing ? ' is-editing' : ''}`}
+      className={`task-entry${isCard ? ' is-card' : ''}${enhance ? ' is-enhance' : ''}${isDetail ? ' is-detail' : ''}${isCard && !enhance && cardOpen && !editing ? ' is-expanded' : ''}${dragging ? ' is-dragging' : ''}${overdue ? ' is-overdue' : ''}${task.status === 'done' ? ' is-complete' : ''}${editing ? ' is-editing' : ''}`}
       draggable={isCard && !editing}
       onDragStart={isCard && !editing ? onDragStart : undefined}
       onDragEnd={isCard ? () => setDragging(false) : undefined}
+      onClick={isCard ? onCardClick : undefined}
+      onKeyDown={isCard ? onCardKeyDown : undefined}
     >
       <div className="task-date">
         {task.due ? (
@@ -153,17 +196,37 @@ export function TaskEntry({
         ) : (
           <>
             <div className="task-title-line">
-              <h4>{task.title}</h4>
-              {customer && (
-                <button type="button" className="task-customer" onClick={() => onOpenCustomer?.(customer.id)} title={`Open ${customer.name || 'customer'}`}>
+              <h4>
+                {isCard ? (
+                  <button
+                    ref={cardToggleRef}
+                    type="button"
+                    className="task-card-toggle"
+                    aria-expanded={enhance ? undefined : cardOpen}
+                    aria-haspopup={enhance ? 'dialog' : undefined}
+                    title={enhance ? 'Open in focus view' : cardOpen ? 'Show less' : 'Show task details'}
+                    onClick={openCard}
+                  >
+                    <span>{task.title}</span>
+                    {enhance
+                      ? <Maximize2 className="task-card-chevron" width={14} height={14} aria-hidden="true" />
+                      : <ChevronDown className="task-card-chevron" width={15} height={15} aria-hidden="true" />}
+                  </button>
+                ) : task.title}
+              </h4>
+              {customer && onOpenCustomer && (
+                <button type="button" className="task-customer" onClick={() => onOpenCustomer(customer.id)} title={`Open ${customer.name || 'customer'}`}>
                   {customer.name || 'Untitled customer'}
                 </button>
               )}
               {task.priority === 'high' && <span className="priority-mark"><IconFlag width={13} height={13} /> High</span>}
             </div>
-            <p className={`task-description${task.description ? '' : ' is-blank'}${hasLongDescription && !descriptionExpanded ? ' is-collapsed' : ''}`}>
-              {task.description || 'No description yet'}
-            </p>
+            {(!collapsed || task.description) && (
+              <p className={`task-description${task.description ? '' : ' is-blank'}${collapsed ? ' is-card-clamped' : variant === 'row' && hasLongDescription && !descriptionExpanded ? ' is-collapsed' : ''}`}>
+                {task.description || 'No description yet'}
+              </p>
+            )}
+            {!collapsed && (<>
             {task.solution && (
               <div className="task-solution">
                 <span className="task-solution-label">Solution</span>
@@ -178,8 +241,15 @@ export function TaskEntry({
                 </p>
               </div>
             )}
+            {(isCard || isDetail) && (createdLabel || doneLabel) && (
+              <p className="task-card-meta">
+                {createdLabel && <>Created {createdLabel}</>}
+                {createdLabel && doneLabel && ' · '}
+                {doneLabel && <>Completed {doneLabel}</>}
+              </p>
+            )}
             <div className="task-links">
-              {hasLongDescription && (
+              {variant === 'row' && hasLongDescription && (
                 <button
                   type="button"
                   className="task-expand"
@@ -202,6 +272,7 @@ export function TaskEntry({
                 </button>
               )}
             </div>
+            </>)}
           </>
         )}
       </div>
