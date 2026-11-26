@@ -3,7 +3,7 @@ import { today, toISODate, uid } from './dates';
 import { IconFlag, IconPlus, IconTrash } from './icons';
 import { KanbanBoard } from './KanbanBoard';
 import { dailyTotals, formatDuration, useNow, type useTimeTracker } from './timeTracking';
-import { TaskEntry } from './TaskEntry';
+import { TaskEntry, type KanbanCardMode } from './TaskEntry';
 import type { Customer, CustomerStatus, Priority, Task, TaskStatus } from './types';
 import { DateField } from './DateField';
 
@@ -18,6 +18,8 @@ interface Props {
   sourceLabel: string;
   layout: WorkspaceLayout;
   onLayoutChange: (layout: WorkspaceLayout) => void;
+  /** How kanban cards reveal task details. */
+  kanbanCardMode?: KanbanCardMode;
   tracker?: ReturnType<typeof useTimeTracker>;
   onSelectCustomer: (id: string) => void;
   onAddCustomer: () => void;
@@ -97,6 +99,7 @@ export function CustomerWorkspace({
   sourceLabel,
   layout,
   onLayoutChange,
+  kanbanCardMode = 'expand',
   tracker,
   onSelectCustomer,
   onAddCustomer,
@@ -268,6 +271,8 @@ export function CustomerWorkspace({
             onUpdateTask={onUpdateTask}
             onRemoveTask={onRemoveTask}
             moveTargets={moveTargets}
+            customer={customer}
+            cardMode={kanbanCardMode}
           />
         ) : (<>
         <button

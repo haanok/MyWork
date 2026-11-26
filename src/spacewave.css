@@ -3165,6 +3165,162 @@ kbd {
   font-size: 0.84rem;
 }
 
+.task-entry.is-card:not(.is-editing) .task-content {
+  cursor: pointer;
+}
+
+.task-entry.is-card:not(.is-editing):hover {
+  border-color: color-mix(in srgb, var(--space-cyan) 32%, var(--space-line));
+}
+
+.task-entry.is-card.is-expanded {
+  border-color: color-mix(in srgb, var(--space-cyan) 52%, var(--space-line));
+}
+
+.task-card-toggle {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-card-toggle:focus-visible {
+  border-radius: 2px;
+  outline-offset: 2px;
+}
+
+.task-card-chevron {
+  flex: none;
+  margin-top: 0.15em;
+  color: var(--space-quiet);
+  transition: transform 200ms var(--space-ease), color 150ms ease;
+}
+
+.task-entry.is-card:hover .task-card-chevron,
+.task-card-toggle:focus-visible .task-card-chevron {
+  color: var(--space-cyan);
+}
+
+.task-entry.is-card.is-expanded .task-card-chevron {
+  transform: rotate(180deg);
+  color: var(--space-cyan);
+}
+
+.task-entry.is-card .task-description.is-card-clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.task-entry.is-card.is-expanded .task-description {
+  white-space: pre-wrap;
+}
+
+.task-card-meta {
+  margin: 0;
+  color: var(--space-quiet);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus view: one task enlarged with full context ("click to enhance"). */
+.import-dialog.task-focus-dialog {
+  width: min(820px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(88dvh, 920px);
+  overflow: auto;
+  padding: 0;
+}
+
+.task-focus-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  align-items: center;
+  margin: 0;
+  padding: 14px 18px 12px 24px;
+  border-bottom: 1px solid var(--space-line);
+  background: inherit;
+}
+
+.task-focus-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--space-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.task-focus-context > span:last-of-type:not(.visually-hidden) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app .task-focus-dialog .task-entry.is-detail {
+  padding: 22px 24px 26px;
+  border: 0;
+  background: none;
+}
+
+.app .task-focus-dialog .task-entry.is-detail:hover {
+  background: none;
+}
+
+.task-entry.is-detail .task-title-line h4 {
+  font-size: 1.3rem;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.task-entry.is-detail .task-description {
+  max-width: 68ch;
+  font-size: 0.98rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.task-entry.is-detail .task-solution p {
+  max-width: 68ch;
+  white-space: pre-wrap;
+}
+
+.task-entry.is-card.is-enhance .task-card-chevron {
+  margin-top: 0.2em;
+}
+
+@media (max-width: 680px) {
+  .import-dialog.task-focus-dialog {
+    width: calc(100vw - 16px);
+    max-height: 92dvh;
+  }
+
+  .app .task-focus-dialog .task-entry.is-detail {
+    padding: 18px 16px 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-card-chevron {
+    transition: none;
+  }
+}
+
 @media (max-width: 1120px) {
   .crm-workspace.is-board,
   .crm-workspace.is-board.has-details {

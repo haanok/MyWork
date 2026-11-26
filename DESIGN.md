@@ -101,6 +101,10 @@ Controls and panels use 4-6px corners. Customer orbs and contact initials are ci
 - **Customer orb**: a map button; open task count sets size, overdue state uses pink, active state uses cyan, and clear state uses green-blue.
 - **Task composer**: title, multiline description, due date, priority, and add action.
 - **Task row**: due date and relative urgency, title, always-visible description, priority control, status select, and delete action.
+- **Kanban card**: starts compact (title, two-line clamped description, due date, status, priority, delete). The More (⋯) menu's **Kanban cards** group chooses how a card opens (saved in `localStorage` as `mywork-kanban-card-mode`):
+  - **Click to expand** (default): clicking empty card space or the title toggles details inline (full description, solution, waiting-for info, created/completed dates, Edit / Plan for today). The title is a disclosure button with `aria-expanded` and a rotating chevron; Escape collapses an open card.
+  - **Click to enhance**: clicking opens a large focus view (`dialog.import-dialog.task-focus-dialog`, up to 820px wide) showing the whole task with full editing, status, priority, and delete, headed by the column status and customer. The title carries a maximize icon and `aria-haspopup="dialog"`. Escape inside the editor cancels the edit; otherwise Escape, the close button, or a backdrop click closes the view. Deleting or moving the task closes it.
+  - In both modes, controls and text selection never open the card, and drag-and-drop between columns is unchanged.
 - **Customer navigation**: persistent on desktop; active record is marked with a cyan inset and current-state semantics.
 - **Date field**: a themed button that opens a Monday-first month popover (`DateField.tsx`) with ISO week numbers, Today / Tomorrow / Next Monday shortcuts, a cyan-ringed today, a filled cyan selection, and Clear. Fully keyboard-driven; replaces the native date picker everywhere.
 - **Context rail**: editable working notes, contacts, local-save state, and customer removal.

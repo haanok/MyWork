@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerWorkspace, type WorkspaceLayout } from './CustomerWorkspace';
+import type { KanbanCardMode } from './TaskEntry';
 import { AuroraSurface } from './AuroraSurface';
 import { DriftSurface } from './DriftSurface';
 import { today } from './dates';
@@ -37,6 +38,11 @@ const NEXT_STATUS = { open: 'doing', doing: 'done', waiting: 'doing', done: 'ope
 const HOME_THEMES = ['spacewave', 'drift', 'paper', 'vivicta', 'vice', 'vivicta-pixel', 'porcelain', 'porcelain-dark'] as const;
 const MAP_CENTER_DRIFT_KEY = 'mywork-map-center-drift';
 const VICE_BACKDROP_KEY = 'mywork-vice-backdrop';
+const KANBAN_CARD_MODE_KEY = 'mywork-kanban-card-mode';
+const KANBAN_CARD_MODES: Array<{ mode: KanbanCardMode; label: string; hint: string }> = [
+  { mode: 'expand', label: 'Click to expand', hint: 'Clicking a card reveals its details inline on the board.' },
+  { mode: 'enhance', label: 'Click to enhance', hint: 'Clicking a card opens it in a large focus view with full context.' },
+];
 const WORKSPACE_LAYOUT_KEY = 'mywork-workspace-layout';
 type HomeTheme = (typeof HOME_THEMES)[number];
 type ViceBackdrop = 'city' | 'simple';
@@ -56,6 +62,14 @@ function savedViceBackdrop(): ViceBackdrop {
     return window.localStorage.getItem(VICE_BACKDROP_KEY) === 'simple' ? 'simple' : 'city';
   } catch {
     return 'city';
+  }
+}
+
+function savedKanbanCardMode(): KanbanCardMode {
+  try {
+    return window.localStorage.getItem(KANBAN_CARD_MODE_KEY) === 'enhance' ? 'enhance' : 'expand';
+  } catch {
+    return 'expand';
   }
 }
 
@@ -98,6 +112,7 @@ export default function App() {
   const [viceBackdrop, setViceBackdrop] = useState<ViceBackdrop>(savedViceBackdrop);
   const [centerBubbles, setCenterBubbles] = useState(savedCenterDrift);
   const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>(savedWorkspaceLayout);
+  const [kanbanCardMode, setKanbanCardMode] = useState<KanbanCardMode>(savedKanbanCardMode);
   const [timeTrackingEnabled, setTimeTrackingEnabled] = useState(savedTimeTrackingEnabled);
   const [showTimeSummary, setShowTimeSummary] = useState(false);
   const [initialRoute] = useState(routeFromHash);
@@ -134,6 +149,14 @@ export default function App() {
       // The selected backdrop still applies for this session when storage is unavailable.
     }
   }, [viceBackdrop]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(KANBAN_CARD_MODE_KEY, kanbanCardMode);
+    } catch {
+      // The selected card behavior still applies for this session when storage is unavailable.
+    }
+  }, [kanbanCardMode]);
 
   useEffect(() => {
     try {
@@ -542,6 +565,23 @@ export default function App() {
                   )}
                 </div>
                 <div className="data-menu-divider" role="separator" />
+                <div role="group" aria-labelledby="kanban-cards-menu-label" className="data-menu-group">
+                  <p id="kanban-cards-menu-label" className="data-menu-heading">Kanban cards</p>
+                  {KANBAN_CARD_MODES.map(({ mode, label, hint }) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={kanbanCardMode === mode}
+                      title={hint}
+                      onClick={() => setKanbanCardMode(mode)}
+                    >
+                      {label}
+                      {kanbanCardMode === mode && <IconCheck className="data-menu-check" width={15} height={15} />}
+                    </button>
+                  ))}
+                </div>
+                <div className="data-menu-divider" role="separator" />
                 {mcpInfo?.enabled && (
                   <button type="button" role="menuitem" onClick={() => { setDataMenuOpen(false); setShowMcp(true); }}>
                     <IconPlug width={16} height={16} />
@@ -597,6 +637,7 @@ export default function App() {
             sourceLabel={sourceLabel}
             layout={workspaceLayout}
             onLayoutChange={setWorkspaceLayout}
+            kanbanCardMode={kanbanCardMode}
             tracker={timeTrackingEnabled ? tracker : undefined}
             onSelectCustomer={setSelectedId}
             onAddCustomer={addCustomer}
